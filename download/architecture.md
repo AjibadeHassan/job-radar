@@ -2,9 +2,12 @@
 
 > Multi-tenant, multi-industry job intelligence service. Successor to the single-tenant `Job-scanner` repo. Africa-first geography, generalist industry coverage, free-tier AI stack.
 
-**Status:** Pre-build specification
+**Status:** Pre-build specification (v1.1 — zero-cost revision)
 **Date:** 2026-10-28
 **Owner:** Hassan (with senior engineering review)
+**Changelog:**
+- v1.0 — initial: Hetzner VPS, OpenAI matching, Postmark email, new Telegram bot
+- v1.1 — zero-cost revision: Oracle Cloud Always Free, Gemini-only AI, Cloudflare Email Routing + Workers for inbound email, Cloudflare R2 for resume storage, per-user authenticated Playwright sessions for account-required platforms (LinkedIn/Indeed/Glassdoor/Otta), reuse of existing job-scanner Telegram bot token. Monthly operating cost: **$0**.
 
 ---
 
@@ -18,11 +21,12 @@ The original `Job-scanner` is a personal Next.js app: one GitHub user, one Teleg
 
 1. **Africa-first geography.** Pan-African boards (Jobberman NG, MyJobMag NG, BrighterMonday KE/UG/TZ, Careers24 ZA) get primary weight; global remote aggregators serve as fallback. This is an underserved market where existing players (LinkedIn, Indeed) have weak local coverage.
 2. **Generalism from day one.** Tech, Healthcare, Finance, Education, Creative, Sales, Legal, Operations — eight industries with a hierarchical `Industry → Function → Seniority → Specialization` taxonomy. GitHub OAuth and GitHub-repo-as-profile are dropped entirely; resume upload + LLM parsing is the only profile entry path.
-3. **Email ingestion as a first-class source.** LinkedIn, Indeed, Glassdoor, and Otta all send email job alerts by design and industry-agnostically. Each user gets a unique inbound address (`user-abc123@radar.inbound`); emails are parsed into structured job postings. This is 100% ToS-compliant, 100% reliable, and replaces roughly 40% of what scraping used to do — with zero anti-bot risk.
+3. **Per-user authenticated sessions, not proxies.** LinkedIn, Indeed, Glassdoor, Otta — all require accounts. Instead of paying for residential proxies ($5–50+/mo, brittle, ToS-violating), we capture each user's own authenticated browser session during onboarding and use it to read their personalized job feeds. The request IS the user — the platform has no reason to block it.
+4. **Zero operating cost by design.** Every layer sits on a free tier: Oracle Cloud Always Free (4 ARM cores, 24GB RAM), Neon free Postgres (1GB, pgvector), Gemini free tier (1500 req/day), Cloudflare Email Routing + Workers (truly free inbound email), Cloudflare R2 (10GB free storage). The existing Telegram bot token from the job-scanner repo is reused — no new bot needed.
 
 ### Cost ceiling
 
-Free tier for everything except OpenAI matching. Estimated monthly burn at 100 active users: **$8 VPS + $5-15 OpenAI = $13-23/mo.** Profitable at $5/mo subscription with 5 paying users.
+**Monthly operating cost: $0** until free-tier ceilings are exceeded. First ceiling is Gemini's 1500 req/day, hit around 75 active users scanning 4x/day. Paid Gemini tier ($0.075/1M input tokens) keeps cost negligible past that point — roughly $0.10–0.30/user/mo. Profitable at $5/mo subscription with even 1 paying user.
 
 ---
 
@@ -63,8 +67,8 @@ Free tier for everything except OpenAI matching. Estimated monthly burn at 100 a
               │           External services                  │
               │  Adzuna · Jooble · USAJobs · Reed · Muse     │
               │  Jobberman · BrighterMonday · Careers24      │
-              │  Postmark inbound (email parse)              │
-              │  Gemini (embeddings) · OpenAI (matching)     │
+              │  Cloudflare Email Routing (inbound)         │
+              │  Gemini (embeddings + structured matching)    │
               │  Telegram Bot API                            │
               └──────────────────────────────────────────────┘
 ```
@@ -76,8 +80,8 @@ Free tier for everything except OpenAI matching. Estimated monthly burn at 100 a
 | **Next.js 16 app** | Auth (Auth.js v5), onboarding wizard, dashboard, REST API for jobs/scans/preferences, Telegram deep-link capture |
 | **PostgreSQL 16 + pgvector** | All relational data + vector embeddings in one DB. Multi-tenant via `userId` foreign key on every table. |
 | **Redis 7** | BullMQ job queue, per-source rate-limit tokens, per-user notification counters |
-| **Worker process** | Three job types: `scrape` (fetch from sources), `match` (embed + LLM score), `notify` (Telegram dispatch) |
-| **Telegram Bot** | Long-polling via `getUpdates`. Receives `/start USER_TOKEN`, stores `chatId`, sends notifications with inline buttons |
+| **Worker process** | Four job types: `scrape` (RSS/API sources), `scrape-auth` (per-user Playwright sessions for LinkedIn/Indeed/etc.), `match` (embed + LLM score), `notify` (Telegram dispatch) |
+| **Telegram Bot** | **Reuses the bot token from the job-scanner repo.** Long-polling via `getUpdates`. Receives `/start USER_TOKEN`, stores `chatId`, sends notifications with inline buttons |
 | **Caddy** | Automatic HTTPS via Let's Encrypt, reverse proxy to Next.js |
 
 ### Data flow: a single user's scan
@@ -89,7 +93,7 @@ Free tier for everything except OpenAI matching. Estimated monthly burn at 100 a
 4. New jobs deduplicated against JobPosting table (URL hash + title+company hash)
 5. New jobs embedded via Gemini (batched, cached)
 6. Cosine similarity vs U's profile embedding → filter < 0.55
-7. Top 20 candidates sent to OpenAI gpt-4o-mini with JSON schema response
+7. Top 20 candidates sent to Gemini 1.5 Flash with JSON schema response
 8. Jobs with score ≥ user's threshold saved as UserJobMatch
 9. Top N (user-configurable, default 5) queued for Telegram notification
 10. Notification worker respects timezone window + per-user daily cap
@@ -487,7 +491,7 @@ Each user gets `user-{token}@radar.inbound`. They forward their existing alert e
 - **Naukri** alerts (India)
 - **Company career pages** that offer "email me new jobs" (most do)
 
-Postmark Inbound Parse receives the email, posts raw body to our `/api/inbound-email` webhook, worker parses with a regex+LLM hybrid (regex for structured alert emails, LLM for messy ones), creates `InboundEmail` + linked `JobPosting` records.
+Postmark Inbound Parse receives the email → **(replaced in v1.1)** Cloudflare Email Routing receives inbound mail at `user-{token}@radar.{your-domain}`, fires a Cloudflare Worker that POSTs the raw MIME to `/api/inbound-email`. Worker parses with a regex+LLM hybrid (regex for structured alert emails, Gemini 1.5 Flash for messy ones), creates `InboundEmail` + linked `JobPosting` records. Zero per-email cost on Cloudflare free tier.
 
 ### 4.6 Sources explicitly excluded
 
@@ -501,7 +505,7 @@ Postmark Inbound Parse receives the email, posts raw body to our `/api/inbound-e
 
 ### 5.1 Resume parsing (one-shot at upload)
 
-**Input:** PDF/DOCX → `pdf-parse` extracts text → sent to OpenAI gpt-4o-mini with structured JSON schema response.
+**Input:** PDF/DOCX → `pdf-parse` extracts text → sent to Gemini 1.5 Flash with `responseMimeType: 'application/json'` and a JSON schema response.
 
 **Output schema:**
 ```json
@@ -553,7 +557,7 @@ Returns top 50 candidates. Filter `similarity < 0.55`. Cost: $0 (in-DB operation
 
 ### 5.5 Stage 2 — Structured-output matching
 
-Top ~20 candidates sent to OpenAI gpt-4o-mini with `response_format=json_schema`:
+Top ~20 candidates sent to **Gemini 1.5 Flash** with `responseMimeType: 'application/json'` and a JSON schema:
 
 ```json
 {
@@ -575,20 +579,19 @@ Batched: 5 jobs per prompt to amortize tokens. Cost: ~$0.0003 per batch → ~$0.
 
 Lazy-generated when user clicks "Cover Letter" in dashboard OR when score ≥ 80 (auto-generated for top matches). Cached by hash of `(userId, jobId, tone)` — never regenerated for the same triple. Cost: ~$0.005 per letter.
 
-### 5.7 Total AI cost per user per scan
+### 5.7 Total AI cost per user per scan (Gemini free tier)
 
 | Step | Cost |
 |---|---|
-| Resume parse (one-time) | $0.001 |
-| Profile embed (one-time + on edits) | $0 (Gemini free) |
-| Job embeds (per new job) | $0 (Gemini free, batched) |
-| Stage 2 matching (20 jobs) | $0.0015 |
-| Cover letter (top 5, on-demand) | $0.025 |
-| **Per scan** | **~$0.027** |
-| **Per user per day** (4 scans) | **~$0.11** |
-| **Per user per month** | **~$3.30** |
+| Resume parse (one-time, Gemini 1.5 Flash) | $0 (free tier) |
+| Profile embed (Gemini text-embedding-004) | $0 (free tier) |
+| Job embeds (batched, cached) | $0 (free tier) |
+| Stage 2 matching (Gemini 1.5 Flash, 4 batches of 5 jobs) | $0 (free tier) |
+| Cover letter (top 5, on-demand) | $0 (free tier) |
+| **Per scan** | **$0** |
+| **Per user per month** | **$0** (until 1500 req/day global ceiling hit) |
 
-At 100 active users: **$330/mo** AI cost. Manageable with $5/mo subscriptions.
+Gemini free tier: 15 RPM, 1500 req/day, 1M tokens/min. At ~5 Gemini calls per scan per user, that's 300 scans/day globally = ~75 active users scanning 4x/day before any cost. Past the ceiling, paid Gemini is $0.075/1M input tokens — roughly $0.001 per scan.
 
 ---
 
@@ -663,13 +666,15 @@ Inline keyboard buttons deep-link back to the dashboard with appropriate query p
 
 ---
 
-## 8. VPS Infrastructure
+## 8. VPS Infrastructure (zero-cost)
 
 ### 8.1 Hardware
 
-**Hetzner CX22** (2 vCPU, 4GB RAM, 40GB SSD) — €4.51/mo. Or DigitalOcean droplet ($6/mo) if Hetzner is unavailable in target region.
+**Oracle Cloud Always Free tier** — 4 ARM cores (Ampere A1), 24GB RAM, 200GB block storage. Free forever, no credit card hold past the trial. ARM-based, but Node.js 20+, Postgres 16, Redis 7, Playwright, and all our dependencies run natively on ARM.
 
-Recommended region: Falkenstein (EU-central) for cost, or Ashburn (US-east) if US users dominate.
+Alternative if Oracle Cloud is unavailable in user's region: **Render free tier** for the Next.js app (with sleep-on-idle acceptable for the dashboard, NOT for the worker) + self-host Postgres on a free AWS EC2 t2.micro (1 yr free, then $8/mo — caveat emptor).
+
+Recommended Oracle region: London or Frankfurt (closest to African users with low latency).
 
 ### 8.2 Stack — Docker Compose
 
@@ -703,11 +708,15 @@ services:
     build: .
     command: pnpm worker
     depends_on: [postgres, redis]
+    # Playwright Chromium installed in the image
 
   telegram-bot:
     build: .
     command: pnpm telegram-bot
     depends_on: [postgres, redis]
+    environment:
+      # REUSED from job-scanner repo — same token, same bot
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
 
 volumes:
   caddy_data:
@@ -716,15 +725,23 @@ volumes:
 
 ### 8.3 Backups
 
-- Nightly `pg_dump` to Backblaze B2 S3-compatible bucket (~$0.005/GB)
-- 30-day retention
-- Resume files stored in B2 (not on VPS disk)
+- Nightly `pg_dump` to **Cloudflare R2** (10GB free tier — sufficient for years)
+- 30-day retention via R2 lifecycle rules
+- Resume files + Playwright session blobs stored in R2 (encrypted at rest before upload)
 
-### 8.4 Monitoring
+### 8.4 Email ingestion via Cloudflare (replaces Postmark)
 
-- **Sentry** for error tracking (free tier: 5k errors/mo)
-- **UptimeRobot** for HTTP health checks (free)
+- Domain: `radar.{your-domain}` with Cloudflare DNS
+- Cloudflare Email Routing receives inbound mail at `user-{token}@radar.{your-domain}`
+- Cloudflare Worker (free tier: 100k req/day) processes the inbound webhook, parses MIME, calls our `/api/inbound-email` endpoint
+- Truly free — no Postmark, no per-email cost
+
+### 8.5 Monitoring
+
+- **Sentry** free tier (5k errors/mo) for app + worker errors
+- **UptimeRobot** free tier (50 monitors, 5-min interval) for HTTP health checks
 - **BullMQ dashboard** exposed at `/admin/queue` behind admin auth
+- **Gemini quota monitor**: alerts admin if daily request count > 1200 (80% of ceiling)
 
 ---
 
@@ -738,9 +755,9 @@ volumes:
 | **1** | Auth.js v5 (email magic + Google + Microsoft), Prisma schema, migrations, seed taxonomy | 1.5 |
 | **2** | Onboarding wizard (4 steps): resume upload + parser, expertise picker, Telegram deep-link QR, preferences | 2.0 |
 | **3** | Scraper engine v2: RSS+API sources for pan-African + generalist + 8 industry verticals. Source health tracking. | 2.0 |
-| **4** | Email ingestion (Tier B): Postmark inbound webhook, regex+LLM parser, InboundEmail → JobPosting pipeline | 1.5 |
-| **5** | AI matching v2: Gemini embeddings, pgvector cosine filter, OpenAI structured-output matcher, cover-letter cache | 1.5 |
-| **6** | BullMQ scheduler + per-user cron jobs + worker pool (3 job types: scrape, match, notify) | 1.0 |
+| **4** | Email ingestion (Tier B): Cloudflare Email Routing → Worker webhook, regex+LLM parser, InboundEmail → JobPosting pipeline | 1.5 |
+| **5** | AI matching v2: Gemini embeddings, pgvector cosine filter, Gemini 1.5 Flash structured-output matcher, cover-letter cache | 1.5 |
+| **6** | BullMQ scheduler + per-user cron jobs + worker pool (4 job types: scrape, scrape-auth, match, notify) | 1.0 |
 | **7** | Dashboard v2: live job feed, filters, application tracker, source health page, "mute source" controls | 1.5 |
 | **8** | Polish: Sentry, GDPR data export, rate limits, source health alerts, onboarding analytics | 1.0 |
 
@@ -757,10 +774,11 @@ volumes:
 | Adzuna free tier (1k req/mo) is tight at scale | Switch to Jooble (free, no hard cap) as primary; Adzuna as secondary |
 | Pan-African boards may not have RSS — scraping is ToS-risky | Email ingestion covers them via user-forwarded alerts |
 | Resume parser accuracy across non-English resumes | Start English-only, add i18n in Phase 9 (post-MVP) |
-| OpenAI cost spike if matching volume grows | Hard daily cap per user (e.g. max 100 matches/day), fallback to Gemini free tier if exceeded |
-| Telegram bot rate limits (30/sec global) | Fine at MVP scale; if 1k+ users, add per-user delay queue |
-| Postmark inbound email cost ($0.10/100 inbound) | User-funded: free for first 100/mo per user, then $0.001/email |
-| Single VPS = single point of failure | Daily backups + 30-min recovery SLA; multi-region is post-MVP |
+| Gemini free tier ceiling (1500 req/day) hit at ~75 active users | Auto-rotate to paid Gemini ($0.075/1M tokens — still <$1/user/mo); alert admin at 80% capacity |
+| Per-user Playwright sessions for LinkedIn/Indeed may break when sites change UI | Health-check each platform weekly; alert user to reconnect if session expired; UI-side "Refresh session" button |
+| LinkedIn may flag the user's account for automation | Use Playwright stealth mode, mimic human cadence (3-8s page dwell, real mouse movement), max 1 page load/min per user per platform; never share sessions across users |
+| Telegram bot rate limits (30/sec global) | Fine at MVP scale; if 1k+ users, add per-user delay queue. Bot is reused from job-scanner, so chat history carries over — surface as a banner in the new dashboard |
+| Single VPS = single point of failure | Daily R2 backups + 30-min recovery SLA; multi-region is post-MVP |
 
 ### 10.2 Explicit non-goals for v1
 
@@ -776,22 +794,24 @@ volumes:
 1. **Adzuna partner key** — do we apply now (1-2 week approval) or skip and rely on Jooble?
 2. **Telegram bot name** — `@JobRadarBot` is taken. Suggestions: `@JobRadarHQBot`, `@RadarJobsBot`, `@HireRadarBot`?
 3. **Domain** — `jobradar.app`? `hireradar.io`? Need to register before deploy.
-4. **Resume file storage** — B2 ($0.005/GB) vs Cloudflare R2 (10GB free)?
+4. **Resume file storage** — Cloudflare R2 (10GB free) is the only choice now. Settled in v1.1.
 
 ---
 
 ## 11. What I need from you before Phase 0
 
-1. **Domain name** — pick one and register it
-2. **Telegram bot** — create via `@BotFather`, share the token
-3. **VPS provider choice** — Hetzner vs DigitalOcean vs Vultr (default: Hetzner, cheapest)
-4. **Postmark account** — for email ingestion (free 100 inbound/mo, then $0.10/100)
-5. **OpenAI API key** — for matching (prepay $10 to start)
-6. **Google OAuth credentials** — for sign-in
-7. **Microsoft Entra app registration** — for Microsoft sign-in
+1. **Domain name** — pick one and register it (only hard cost in the entire stack, ~$10/yr). Suggest `jobradar.app`, `hireradar.io`, or similar.
+2. **Telegram bot token** — reuse the existing one from the job-scanner repo (`@BotFather` → `/mybots` → select existing → API token). Drop into new project's `.env` as `TELEGRAM_BOT_TOKEN`.
+3. **Oracle Cloud account** — sign up at cloud.oracle.com (free, requires card verification but no charge). Provision an Always Free ARM instance (4 OCPUs, 24GB RAM).
+4. **Cloudflare account** — for DNS, Email Routing, Workers, and R2. All on free tier.
+5. **Gemini API key** — from Google AI Studio (aistudio.google.com/apikey). Free, 1500 req/day.
+6. **Google OAuth credentials** — Google Cloud Console → create OAuth client ID (Web). Free.
+7. **Microsoft Entra app registration** — optional, can defer if Microsoft sign-in is not urgent.
 
-Once these are in hand, Phase 0 (VPS setup) takes half a day and we're into Phase 1 (auth + DB schema) immediately after.
+Once these are in hand, Phase 0 (VPS setup + DNS + Caddy + Postgres) takes half a day and we're into Phase 1 (auth + DB schema) immediately after.
+
+**No OpenAI key. No Postmark. No paid proxies. No residential proxy service.** The only paid item in the entire stack is the domain (~$10/yr), which is unavoidable for HTTPS + email routing.
 
 ---
 
-*End of architecture brief. Next step: confirm or revise, then begin Phase 0.*
+*End of architecture brief v1.1. Next step: confirm or revise, then begin Phase 0.*
