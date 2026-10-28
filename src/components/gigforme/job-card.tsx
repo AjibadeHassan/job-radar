@@ -25,13 +25,13 @@ export function JobCard({ job, onShowCoverLetter, onMarkApplied, onMarkIgnored, 
   const [ignored, setIgnored] = useState(false)
 
   const scoreColor = (score: number) => {
-    if (score >= 80) return 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30'
+    if (score >= 80) return 'bg-violet-500/10 text-violet-700 dark:text-violet-400 border-violet-500/30'
     if (score >= 60) return 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30'
     return 'bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-500/30'
   }
 
   const fitColor = (fit: string) => {
-    if (fit === 'FIT') return 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
+    if (fit === 'FIT') return 'bg-violet-500/10 text-violet-700 dark:text-violet-400'
     if (fit === 'OVERQUALIFIED') return 'bg-amber-500/10 text-amber-700 dark:text-amber-400'
     return 'bg-muted text-muted-foreground'
   }
@@ -105,7 +105,7 @@ export function JobCard({ job, onShowCoverLetter, onMarkApplied, onMarkIgnored, 
               {formatDate(job.postedAt)}
             </span>
             {job.salaryRange && (
-              <span className="text-emerald-700 dark:text-emerald-400 font-medium">
+              <span className="text-violet-700 dark:text-violet-400 font-medium">
                 {job.salaryRange}
               </span>
             )}
@@ -122,7 +122,7 @@ export function JobCard({ job, onShowCoverLetter, onMarkApplied, onMarkIgnored, 
 
           <div className="flex flex-wrap gap-1.5">
             {applied ? (
-              <Badge className="bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 gap-1">
+              <Badge className="bg-violet-500/10 text-violet-700 dark:text-violet-400 border border-violet-500/30 gap-1">
                 <Check className="h-3 w-3" />
                 Applied
               </Badge>
@@ -159,7 +159,7 @@ export function JobCard({ job, onShowCoverLetter, onMarkApplied, onMarkIgnored, 
                 onClick={() => handleCopy(job.coverLetter!)}
                 className="gap-1.5 h-8"
               >
-                {copied ? <Check className="h-3 w-3 text-emerald-500" /> : <Copy className="h-3 w-3" />}
+                {copied ? <Check className="h-3 w-3 text-violet-500" /> : <Copy className="h-3 w-3" />}
                 {copied ? 'Copied' : 'Copy'}
               </Button>
             )}

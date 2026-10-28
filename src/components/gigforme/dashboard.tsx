@@ -79,7 +79,7 @@ export function Dashboard() {
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
-              <Activity className="h-3 w-3 text-emerald-500 radar-dot" />
+              <Activity className="h-3 w-3 text-violet-500 radar-dot" />
               <span>Last scan: {new Date(lastScan.startedAt).toLocaleString()}</span>
             </div>
             <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Your job feed</h2>
@@ -280,7 +280,7 @@ function StatCard({
   sub?: string
 }) {
   const colorMap = {
-    emerald: 'text-emerald-600 dark:text-emerald-400',
+    emerald: 'text-violet-600 dark:text-violet-400',
     amber: 'text-amber-600 dark:text-amber-400',
     rose: 'text-rose-600 dark:text-rose-400',
     primary: 'text-primary',

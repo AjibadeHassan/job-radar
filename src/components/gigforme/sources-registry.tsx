@@ -13,7 +13,7 @@ import {
 import { SOURCES, type SourceEntry, type SourceKind } from '@/lib/mock-data'
 
 const TIER_LABELS: Record<SourceEntry['tier'], { label: string; color: string }> = {
-  A: { label: 'Job boards & aggregators', color: 'text-emerald-700 dark:text-emerald-400' },
+  A: { label: 'Job boards & aggregators', color: 'text-violet-700 dark:text-violet-400' },
   B: { label: 'From your email alerts', color: 'text-amber-700 dark:text-amber-400' },
   C: { label: 'From your connected accounts', color: 'text-purple-700 dark:text-purple-400' },
   D: { label: 'Tech & remote specialists', color: 'text-cyan-700 dark:text-cyan-400' },
@@ -90,10 +90,10 @@ export function SourcesRegistry() {
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center gap-2 mb-1">
-                <Check className="h-3.5 w-3.5 text-emerald-500" />
+                <Check className="h-3.5 w-3.5 text-violet-500" />
                 <span className="text-xs text-muted-foreground">Enabled</span>
               </div>
-              <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{stats.enabled}</div>
+              <div className="text-2xl font-bold text-violet-600 dark:text-violet-400">{stats.enabled}</div>
             </CardContent>
           </Card>
           <Card>
@@ -206,7 +206,7 @@ export function SourcesRegistry() {
                                   </div>
                                 </div>
                                 {source.enabled ? (
-                                  <Check className="h-3.5 w-3.5 text-emerald-500 flex-shrink-0" />
+                                  <Check className="h-3.5 w-3.5 text-violet-500 flex-shrink-0" />
                                 ) : (
                                   <Ban className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
                                 )}
@@ -240,7 +240,7 @@ export function SourcesRegistry() {
                                   <div className="flex-1 h-1 rounded-full bg-muted overflow-hidden">
                                     <div
                                       className={`h-full ${
-                                        source.healthScore >= 0.9 ? 'bg-emerald-500'
+                                        source.healthScore >= 0.9 ? 'bg-violet-500'
                                         : source.healthScore >= 0.7 ? 'bg-amber-500'
                                         : 'bg-rose-500'
                                       }`}

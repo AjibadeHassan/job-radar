@@ -16,12 +16,12 @@ export function Logo({ size = 32, className = '', animated = false }: LogoProps)
       aria-hidden="true"
     >
       <defs>
-        <linearGradient id="radar-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="oklch(0.7 0.15 160)" />
-          <stop offset="100%" stopColor="oklch(0.55 0.14 165)" />
+        <linearGradient id="gig-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="oklch(0.65 0.2 285)" />
+          <stop offset="100%" stopColor="oklch(0.48 0.18 285)" />
         </linearGradient>
       </defs>
-      <rect width="40" height="40" rx="9" fill="url(#radar-grad)" />
+      <rect width="40" height="40" rx="9" fill="url(#gig-grad)" />
       <circle cx="20" cy="20" r="13" stroke="white" strokeWidth="1.5" opacity="0.4" fill="none" />
       <circle cx="20" cy="20" r="8" stroke="white" strokeWidth="1.5" opacity="0.55" fill="none" />
       <circle cx="20" cy="20" r="3" stroke="white" strokeWidth="1.5" opacity="0.75" fill="none" />

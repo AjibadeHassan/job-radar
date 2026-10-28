@@ -41,7 +41,7 @@ export function CoverLetterModal({ job, open, onClose }: CoverLetterModalProps) 
               <DialogDescription className="mt-1">
                 <span className="font-medium text-foreground">{job.title}</span> at{' '}
                 <span className="font-medium text-foreground">{job.company}</span> · Score{' '}
-                <span className="text-emerald-700 dark:text-emerald-400 font-mono">{job.matchScore}/100</span>
+                <span className="text-violet-700 dark:text-violet-400 font-mono">{job.matchScore}/100</span>
               </DialogDescription>
             </div>
             <Badge variant="secondary" className="text-xs gap-1">

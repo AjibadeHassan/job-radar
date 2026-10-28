@@ -147,7 +147,7 @@ export function OnboardingWizard({ open, onClose, onComplete }: OnboardingWizard
                       isActive
                         ? 'bg-primary text-primary-foreground'
                         : isDone
-                        ? 'bg-emerald-500 text-white'
+                        ? 'bg-violet-500 text-white'
                         : 'bg-muted text-muted-foreground'
                     }`}
                   >
@@ -158,7 +158,7 @@ export function OnboardingWizard({ open, onClose, onComplete }: OnboardingWizard
                       {s.name}
                     </div>
                   </div>
-                  {s.id < 4 && <div className={`h-px flex-1 mx-2 ${isDone ? 'bg-emerald-500' : 'bg-border'}`} />}
+                  {s.id < 4 && <div className={`h-px flex-1 mx-2 ${isDone ? 'bg-violet-500' : 'bg-border'}`} />}
                 </div>
               )
             })}
@@ -213,7 +213,7 @@ export function OnboardingWizard({ open, onClose, onComplete }: OnboardingWizard
                           </div>
                         </div>
                         {parsing && <RefreshCw className="h-4 w-4 animate-spin text-muted-foreground" />}
-                        {parsed && <Check className="h-4 w-4 text-emerald-500" />}
+                        {parsed && <Check className="h-4 w-4 text-violet-500" />}
                       </div>
 
                       {parsing && (
@@ -231,9 +231,9 @@ export function OnboardingWizard({ open, onClose, onComplete }: OnboardingWizard
                         <motion.div
                           initial={{ opacity: 0, y: 8 }}
                           animate={{ opacity: 1, y: 0 }}
-                          className="space-y-3 p-4 rounded-lg border border-emerald-500/30 bg-emerald-500/5"
+                          className="space-y-3 p-4 rounded-lg border border-violet-500/30 bg-violet-500/5"
                         >
-                          <div className="flex items-center gap-2 text-sm font-medium text-emerald-700 dark:text-emerald-400">
+                          <div className="flex items-center gap-2 text-sm font-medium text-violet-700 dark:text-violet-400">
                             <Check className="h-4 w-4" />
                             Parsed profile — review &amp; edit
                           </div>
@@ -420,9 +420,9 @@ export function OnboardingWizard({ open, onClose, onComplete }: OnboardingWizard
                         <motion.div
                           initial={{ opacity: 0, scale: 0.9 }}
                           animate={{ opacity: 1, scale: 1 }}
-                          className="p-4 rounded-lg border border-emerald-500/30 bg-emerald-500/5 space-y-2"
+                          className="p-4 rounded-lg border border-violet-500/30 bg-violet-500/5 space-y-2"
                         >
-                          <div className="flex items-center gap-2 text-sm font-medium text-emerald-700 dark:text-emerald-400">
+                          <div className="flex items-center gap-2 text-sm font-medium text-violet-700 dark:text-violet-400">
                             <ShieldCheck className="h-4 w-4" />
                             Telegram connected
                           </div>
@@ -482,7 +482,7 @@ export function OnboardingWizard({ open, onClose, onComplete }: OnboardingWizard
                     <div>
                       <div className="flex items-center justify-between mb-2">
                         <Label className="text-sm">Minimum match score</Label>
-                        <span className="text-xs font-mono text-emerald-600 dark:text-emerald-400">{minScore}/100</span>
+                        <span className="text-xs font-mono text-violet-600 dark:text-violet-400">{minScore}/100</span>
                       </div>
                       <Slider
                         value={[minScore]}

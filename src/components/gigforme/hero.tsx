@@ -5,19 +5,50 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Radar, ArrowRight, Sparkles, ShieldCheck, Globe2, Briefcase, Stethoscope, Scale } from 'lucide-react'
 import { Logo } from './logo'
+import { useEffect, useState } from 'react'
 
 interface HeroProps {
   onGetStarted: () => void
   onViewDashboard: () => void
 }
 
+const BG_IMAGES = [
+  '/bg/career-1.jpg',
+  '/bg/career-2.jpg',
+  '/bg/career-3.jpg',
+]
+
 export function Hero({ onGetStarted, onViewDashboard }: HeroProps) {
+  const [activeIdx, setActiveIdx] = useState(0)
+
+  // Rotate background image every 8 seconds with a 3s cross-fade
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setActiveIdx((prev) => (prev + 1) % BG_IMAGES.length)
+    }, 8000)
+    return () => clearInterval(interval)
+  }, [])
+
   return (
     <section className="relative overflow-hidden border-b border-border">
-      {/* Grid pattern background */}
+      {/* Dynamic rotating background */}
+      <div className="bg-rotating" aria-hidden="true">
+        {BG_IMAGES.map((src, i) => (
+          <div
+            key={src}
+            className={`bg-rotating__layer ${i === activeIdx ? 'bg-rotating__layer--active' : ''}`}
+            style={{ backgroundImage: `url(${src})` }}
+          />
+        ))}
+        {/* Subtle dark gradient overlay to keep text readable on light theme */}
+        <div className="absolute inset-0 bg-gradient-to-b from-background/40 via-background/60 to-background" />
+        <div className="absolute inset-0 bg-gradient-to-r from-background/80 via-background/30 to-transparent" />
+      </div>
+
+      {/* Grid pattern overlay (kept faint) */}
       <div className="absolute inset-0 grid-pattern pointer-events-none" />
 
-      {/* Radar glow */}
+      {/* Radar glow — now violet */}
       <div className="absolute top-1/2 right-0 -translate-y-1/2 translate-x-1/3 pointer-events-none">
         <div className="relative w-[600px] h-[600px] opacity-30 dark:opacity-40">
           <div className="absolute inset-0 rounded-full bg-primary/20 blur-3xl" />
@@ -65,7 +96,7 @@ export function Hero({ onGetStarted, onViewDashboard }: HeroProps) {
 
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.05]">
               Find gigs that{' '}
-              <span className="bg-gradient-to-r from-primary to-emerald-400 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-primary to-violet-400 bg-clip-text text-transparent">
                 match you,
               </span>{' '}
               not the other way around.
@@ -89,7 +120,7 @@ export function Hero({ onGetStarted, onViewDashboard }: HeroProps) {
 
             <div className="flex flex-wrap items-center gap-x-6 gap-y-2 pt-4 text-xs text-muted-foreground">
               <div className="flex items-center gap-1.5">
-                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 radar-dot" />
+                <div className="w-1.5 h-1.5 rounded-full bg-primary radar-dot" />
                 <span>No credit card required</span>
               </div>
               <div className="flex items-center gap-1.5">
@@ -100,6 +131,21 @@ export function Hero({ onGetStarted, onViewDashboard }: HeroProps) {
                 <div className="w-1.5 h-1.5 rounded-full bg-rose-500" />
                 <span>Works for every profession</span>
               </div>
+            </div>
+
+            {/* Background image indicator dots */}
+            <div className="flex items-center gap-1.5 pt-3" aria-label="Background rotation indicator">
+              {BG_IMAGES.map((_, i) => (
+                <div
+                  key={i}
+                  className={`h-1 rounded-full transition-all duration-300 ${
+                    i === activeIdx ? 'w-6 bg-primary' : 'w-1.5 bg-muted-foreground/40'
+                  }`}
+                />
+              ))}
+              <span className="text-[10px] text-muted-foreground ml-1 font-mono">
+                {String(activeIdx + 1).padStart(2, '0')} / {String(BG_IMAGES.length).padStart(2, '0')}
+              </span>
             </div>
           </motion.div>
 
@@ -113,7 +159,7 @@ export function Hero({ onGetStarted, onViewDashboard }: HeroProps) {
           </motion.div>
         </div>
 
-        {/* Stats bar — user-facing, no internal/limit info */}
+        {/* Stats bar */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -160,17 +206,17 @@ export function Hero({ onGetStarted, onViewDashboard }: HeroProps) {
 function TelegramMock() {
   return (
     <div className="relative mx-auto w-full max-w-sm">
-      <div className="rounded-2xl bg-gradient-to-br from-emerald-500/10 to-emerald-700/5 border border-primary/20 p-1 backdrop-blur-sm">
+      <div className="rounded-2xl bg-gradient-to-br from-violet-500/10 to-violet-700/5 border border-primary/20 p-1 backdrop-blur-sm">
         <div className="rounded-xl bg-card p-4 space-y-3 shadow-2xl">
           <div className="flex items-center justify-between pb-2 border-b border-border">
             <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center">
+              <div className="w-7 h-7 rounded-full bg-gradient-to-br from-violet-500 to-violet-700 flex items-center justify-center">
                 <Logo size={20} />
               </div>
               <div>
                 <div className="text-sm font-semibold">GigForMe Bot</div>
                 <div className="text-[10px] text-muted-foreground flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-primary" />
                   online
                 </div>
               </div>
@@ -180,7 +226,7 @@ function TelegramMock() {
 
           <div className="rounded-lg bg-secondary/60 p-3 space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+              <span className="text-xs font-semibold text-primary">
                 🎯 New match (92/100)
               </span>
               <span className="text-[10px] text-muted-foreground">2h ago</span>
@@ -193,7 +239,7 @@ function TelegramMock() {
               💡 Strong fit: matches React+TS stack and fintech domain.
               4+ years req&apos;d, you have 6.
             </div>
-            <div className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+            <div className="text-[11px] font-medium text-primary">
               ₦650,000 – ₦950,000 /mo
             </div>
             <div className="flex gap-1.5 pt-1">
@@ -222,7 +268,7 @@ function TelegramMock() {
       </div>
 
       {/* Floating pulse */}
-      <div className="absolute -top-3 -right-3 w-3 h-3 rounded-full bg-emerald-500 radar-dot" />
+      <div className="absolute -top-3 -right-3 w-3 h-3 rounded-full bg-primary radar-dot" />
       <div className="absolute -bottom-3 -left-3 w-2 h-2 rounded-full bg-amber-500" />
     </div>
   )
