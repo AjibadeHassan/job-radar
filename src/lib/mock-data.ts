@@ -1,4 +1,4 @@
-// Mock data for Job Radar sandbox preview.
+// Mock data for GigForMe sandbox preview.
 // In production these come from Prisma + real scrapers + Gemini.
 
 export type Industry = 'TECH' | 'HEALTHCARE' | 'FINANCE' | 'EDUCATION' | 'CREATIVE' | 'SALES' | 'LEGAL' | 'OPERATIONS'
@@ -26,7 +26,7 @@ export interface MockJob {
   coverLetter?: string
 }
 
-// ─── Jobs feed (mock matches for a Senior Software Engineer profile) ───
+// ─── Jobs feed (mock matches spanning 7 different industries) ───
 export const MOCK_JOBS: MockJob[] = [
   {
     id: 'job_001',
@@ -55,138 +55,150 @@ In my current role I led the migration of a legacy Redux codebase to React Serve
 I would welcome the chance to discuss how my experience can accelerate your merchant dashboard work. Thank you for your consideration.
 
 Warm regards,
-Hassan`,
+[Your Name]`,
   },
   {
     id: 'job_002',
-    title: 'Backend Engineer (Node.js)',
-    company: 'Paystack',
-    location: 'Lagos, NG (Remote)',
-    workMode: 'REMOTE',
-    url: 'https://paystack.com/careers/backend-engineer',
-    applyUrl: 'https://paystack.com/careers/backend-engineer/apply',
+    title: 'Nurse Practitioner — ICU',
+    company: 'Lagos University Teaching Hospital',
+    location: 'Lagos, NG',
+    workMode: 'ONSITE',
+    url: 'https://luth.org.ng/careers/nurse-practitioner-icu',
     postedAt: '2026-10-28T04:22:00Z',
-    source: 'Jobberman Nigeria',
+    source: 'MyJobMag',
     sourceKind: 'RSS',
-    industries: ['TECH', 'FINANCE'],
+    industries: ['HEALTHCARE'],
     matchScore: 88,
-    matchReason: 'Backend Node.js + Postgres match. Paystack uses a stack similar to yours. Remote-friendly in your timezone.',
-    redFlags: ['On-call rotation: 1 week / 6 weeks'],
+    matchReason: 'Strong fit for critical care specialization. Your advanced practice certification and 5 years ICU experience match the role requirements. Onsite Lagos.',
+    redFlags: ['12-hour shift rotation'],
     experienceFit: 'FIT',
-    salaryRange: '₦700,000 – ₦1,100,000 /mo',
-    description: 'Paystack is hiring a Backend Engineer to build the next generation of payment APIs serving millions of merchants across Africa. You will work with Node.js, PostgreSQL, and Go, building services that process tens of thousands of transactions per minute.',
+    salaryRange: '₦450,000 – ₦650,000 /mo',
+    description: 'LUTH is seeking a Nurse Practitioner for our Intensive Care Unit. You will provide advanced nursing care to critically ill patients, manage ventilator protocols, and collaborate with the intensivist team. Current APRN license and BLS/ACLS required.',
   },
   {
     id: 'job_003',
-    title: 'Full-Stack Engineer',
-    company: 'Andela',
-    location: 'Remote (Africa)',
-    workMode: 'REMOTE',
-    url: 'https://andela.com/careers/full-stack-engineer',
+    title: 'Senior Accountant — Audit Practice',
+    company: 'KPMG Nigeria',
+    location: 'Lagos, NG',
+    workMode: 'HYBRID',
+    url: 'https://kpmg.com/ng/careers/senior-accountant-audit',
+    applyUrl: 'https://kpmg.com/ng/careers/senior-accountant-audit/apply',
     postedAt: '2026-10-27T22:18:00Z',
-    source: 'Remotive',
-    sourceKind: 'JSON',
-    industries: ['TECH'],
-    matchScore: 81,
-    matchReason: 'Full-stack TypeScript role. Andela serves distributed teams across Africa — matches your remote-first preference.',
-    redFlags: [],
+    source: 'Jobberman Nigeria',
+    sourceKind: 'RSS',
+    industries: ['FINANCE'],
+    matchScore: 85,
+    matchReason: 'Strong audit background match. Your IFRS experience and ACA qualification align directly. Hybrid Lagos — matches your work preference.',
+    redFlags: ['Busy season: 55-hour weeks Jan–Mar'],
     experienceFit: 'FIT',
-    salaryRange: '$3,000 – $5,000 /mo',
-    description: 'Andela is looking for a Full-Stack Engineer to build internal tools for our talent cloud platform. You will work across the stack: Next.js on the frontend, NestJS on the backend, and Prisma + Postgres for data.',
+    salaryRange: '₦550,000 – ₦800,000 /mo',
+    description: 'KPMG Nigeria is hiring a Senior Accountant for our Audit practice. You will lead audit engagements for mid-cap financial services clients, manage field teams, and own client deliverables under IFRS. ACA/ACCA qualification and 5+ years audit experience required.',
+    coverLetter: `Dear KPMG Nigeria Hiring Team,
+
+I am writing to express my interest in the Senior Accountant position within your Audit practice. With over seven years of experience in financial reporting and assurance — most recently managing the audit workstream for a portfolio of mid-cap financial services clients — I see strong alignment between my background and KPMG's standards of audit quality and client service.
+
+In my current role I lead a team of four analysts delivering year-end audit engagements under IFRS for clients in the banking and insurance sectors. I have hands-on experience with the full audit lifecycle: planning, risk assessment, substantive testing, and partner-level review. My work has consistently improved engagement efficiency — most recently reducing review-cycle time by 22% through process automation and tighter documentation controls.
+
+I hold an ACA qualification from ICAN and am currently completing my ACCA certification. I am comfortable working with international audit frameworks and have supported two cross-border engagements involving US GAAP reconciliations.
+
+I would welcome the opportunity to discuss how my experience can contribute to KPMG's audit practice. Thank you for your consideration.
+
+Warm regards,
+[Your Name]`,
   },
   {
     id: 'job_004',
-    title: 'Senior Product Designer',
-    company: 'Kuda Bank',
+    title: 'Mathematics Teacher (Senior School)',
+    company: 'British Council School Lagos',
     location: 'Lagos, NG',
-    workMode: 'HYBRID',
-    url: 'https://kuda.com/careers/senior-product-designer',
+    workMode: 'ONSITE',
+    url: 'https://britishcouncilschool.ng/careers/math-teacher-senior',
     postedAt: '2026-10-27T19:05:00Z',
-    source: 'MyJobMag',
+    source: 'Tes.com',
     sourceKind: 'RSS',
-    industries: ['CREATIVE', 'FINANCE'],
-    matchScore: 67,
-    matchReason: 'Adjacent to your profile — design + fintech. Could be a stretch role if you want to pivot toward design leadership.',
-    redFlags: ['No engineering responsibilities — pure design role'],
-    experienceFit: 'UNDERQUALIFIED',
-    salaryRange: '₦550,000 – ₦800,000 /mo',
-    description: 'Kuda is hiring a Senior Product Designer to own the design of our savings and lending flows. You will work closely with PM and engineering to ship beautiful, accessible, mobile-first banking experiences.',
+    industries: ['EDUCATION'],
+    matchScore: 80,
+    matchReason: 'Teaching certification and prior IGCSE experience match well. Strong subject mastery demonstrated. Onsite Lagos — matches your location.',
+    redFlags: [],
+    experienceFit: 'FIT',
+    salaryRange: '₦400,000 – ₦600,000 /mo',
+    description: 'British Council School is hiring a Senior School Mathematics Teacher to deliver IGCSE and A-Level Mathematics. You will plan and deliver lessons aligned to the Cambridge curriculum, assess student progress, and contribute to departmental development. PGDE and 3+ years teaching experience required.',
   },
   {
     id: 'job_005',
-    title: 'DevOps Engineer',
-    company: 'Yellow Card',
+    title: 'Brand Designer',
+    company: 'Andela',
     location: 'Remote (Africa)',
     workMode: 'REMOTE',
-    url: 'https://yellowcard.io/careers/devops-engineer',
+    url: 'https://andela.com/careers/brand-designer',
     postedAt: '2026-10-27T15:42:00Z',
-    source: 'Remotive',
+    source: 'Behance jobs',
     sourceKind: 'JSON',
-    industries: ['TECH', 'FINANCE'],
-    matchScore: 58,
-    matchReason: 'DevOps with Kubernetes, Terraform, AWS. Some stack overlap (Docker, CI/CD) but core responsibility is infrastructure, not application code.',
-    redFlags: ['Crypto exposure (Yellow Card is a crypto exchange)'],
-    experienceFit: 'UNDERQUALIFIED',
-    salaryRange: '$4,000 – $6,500 /mo',
-    description: 'Yellow Card is hiring a DevOps Engineer to build and maintain our cloud infrastructure across multiple regions. Strong Kubernetes, Terraform, and observability experience required.',
+    industries: ['CREATIVE'],
+    matchScore: 76,
+    matchReason: 'Brand systems experience matches. Your portfolio shows strength in identity work and design tokens. Remote — matches your work preference.',
+    redFlags: [],
+    experienceFit: 'FIT',
+    salaryRange: '$3,000 – $5,000 /mo',
+    description: 'Andela is looking for a Brand Designer to evolve our visual identity across talent, partner, and customer touchpoints. You will own design tokens, partner with marketing on campaign work, and produce brand guidelines. Strong portfolio in identity systems and 4+ years experience required.',
   },
   {
     id: 'job_006',
-    title: 'Engineering Manager',
-    company: 'Chipper Cash',
-    location: 'Remote (Africa + US)',
-    workMode: 'REMOTE',
-    url: 'https://chippercash.com/careers/engineering-manager',
-    postedAt: '2026-10-26T11:08:00Z',
-    source: 'LinkedIn',
-    sourceKind: 'SESSION',
-    industries: ['TECH', 'FINANCE'],
-    matchScore: 73,
-    matchReason: 'EM role at a fintech with strong African presence. You have the technical depth; people-management is the question.',
-    redFlags: ['4 direct reports', 'Quarterly travel to SF required'],
-    experienceFit: 'OVERQUALIFIED',
-    salaryRange: '$8,000 – $12,000 /mo',
-    description: 'Chipper Cash is looking for an Engineering Manager to lead our cross-border payments team. You will manage 4-6 engineers, partner with PM and design, and own the roadmap for our flagship send-money product.',
-  },
-  {
-    id: 'job_007',
-    title: 'Senior Data Analyst',
-    company: 'Jumia',
-    location: 'Lagos, NG',
-    workMode: 'ONSITE',
-    url: 'https://jumia.com/careers/senior-data-analyst',
-    postedAt: '2026-10-26T08:30:00Z',
-    source: 'BrighterMonday',
-    sourceKind: 'RSS',
-    industries: ['TECH', 'OPERATIONS'],
-    matchScore: 44,
-    matchReason: 'SQL + analytics role. Strong adjacent fit on data thinking, but primary stack mismatch (analytics vs engineering).',
-    redFlags: ['Onsite only — no remote option', 'Weekend on-call during sales events'],
-    experienceFit: 'UNDERQUALIFIED',
-    salaryRange: '₦450,000 – ₦650,000 /mo',
-    description: 'Jumia is hiring a Senior Data Analyst to drive insights for our marketplace team. Strong SQL, Python, and dashboarding experience required. You will work with stakeholders across product, marketing, and operations.',
-  },
-  {
-    id: 'job_008',
-    title: 'Solutions Engineer',
+    title: 'Solutions Engineer (EMEA)',
     company: 'Stripe',
     location: 'Remote (EMEA)',
     workMode: 'REMOTE',
     url: 'https://stripe.com/jobs/listing/solutions-engineer-emea',
-    postedAt: '2026-10-25T14:55:00Z',
+    postedAt: '2026-10-27T11:08:00Z',
     source: 'Adzuna',
     sourceKind: 'API',
-    industries: ['TECH', 'FINANCE', 'SALES'],
-    matchScore: 76,
+    industries: ['TECH', 'SALES'],
+    matchScore: 78,
     matchReason: 'Stripe Solutions Engineer = code + customer-facing work. Matches your stack and your side-project experience with payments integrations.',
-    redFlags: ['50% travel within EMEA region'],
+    redFlags: ['Quarterly travel within EMEA region'],
     experienceFit: 'FIT',
     salaryRange: '$6,000 – $9,000 /mo',
     description: 'Stripe is hiring a Solutions Engineer for our EMEA team. You will partner with sales to architect Stripe integrations for our largest merchants, write reference code, and feed customer insights back to product.',
   },
+  {
+    id: 'job_007',
+    title: 'Corporate Paralegal',
+    company: 'AELEX Legal',
+    location: 'Lagos, NG',
+    workMode: 'ONSITE',
+    url: 'https://aelex.com/careers/corporate-paralegal',
+    postedAt: '2026-10-26T14:55:00Z',
+    source: 'Jobberman Nigeria',
+    sourceKind: 'RSS',
+    industries: ['LEGAL'],
+    matchScore: 74,
+    matchReason: 'Corporate law exposure and document review experience align. Your BL qualification and prior firm internship match the role profile.',
+    redFlags: ['Billable hours target: 1,800/yr'],
+    experienceFit: 'FIT',
+    salaryRange: '₦350,000 – ₦500,000 /mo',
+    description: 'AELEX is hiring a Corporate Paralegal to support our M&A and corporate finance practice. You will draft transaction documents, manage due diligence workstreams, and coordinate with regulatory counsel. BL qualification and 2+ years experience required.',
+  },
+  {
+    id: 'job_008',
+    title: 'Program Manager — Sustainable Development',
+    company: 'UNDP Nigeria',
+    location: 'Abuja, NG',
+    workMode: 'HYBRID',
+    url: 'https://undp.org/nigeria/careers/program-manager',
+    postedAt: '2026-10-26T08:30:00Z',
+    source: 'idealist.org',
+    sourceKind: 'RSS',
+    industries: ['OPERATIONS'],
+    matchScore: 72,
+    matchReason: 'Program management experience and stakeholder work match. Your background in cross-functional coordination aligns well with UNDP project structure.',
+    redFlags: ['Quarterly travel to field offices required'],
+    experienceFit: 'FIT',
+    salaryRange: '$4,000 – $6,000 /mo',
+    description: 'UNDP Nigeria is seeking a Program Manager to lead our sustainable development portfolio in the Northeast region. You will manage a multi-disciplinary team, coordinate with government and NGO partners, and oversee $4M in active program funding. PMP and 5+ years experience required.',
+  },
 ]
 
-// ─── Source registry (full 40-source production list) ───
+// ─── Source registry ───
 export interface SourceEntry {
   name: string
   slug: string
@@ -195,7 +207,7 @@ export interface SourceEntry {
   industries: Industry[]
   healthScore: number
   enabled: boolean
-  tier: 'A' | 'B' | 'C' | 'D' | 'E'  // A=RSS/API, B=Email, C=Session, D=Legacy tech, E=Excluded
+  tier: 'A' | 'B' | 'C' | 'D' | 'E'
   ratePerMin?: number
 }
 
@@ -207,15 +219,12 @@ export const SOURCES: SourceEntry[] = [
   { name: 'Careers24', slug: 'careers24', kind: 'API', regions: ['ZA'], industries: ['TECH','HEALTHCARE','FINANCE','EDUCATION','CREATIVE','SALES','LEGAL','OPERATIONS'], healthScore: 0.89, enabled: true, tier: 'A', ratePerMin: 30 },
   { name: 'JobWebGhana', slug: 'jobwebghana', kind: 'RSS', regions: ['GH'], industries: ['TECH','HEALTHCARE','FINANCE','EDUCATION','OPERATIONS'], healthScore: 0.78, enabled: true, tier: 'A' },
 
-  // Tier A — Generalist aggregators (free APIs / RSS)
+  // Tier A — Generalist aggregators
   { name: 'Adzuna', slug: 'adzuna', kind: 'API', regions: ['GLOBAL'], industries: ['TECH','HEALTHCARE','FINANCE','EDUCATION','CREATIVE','SALES','LEGAL','OPERATIONS'], healthScore: 0.96, enabled: true, tier: 'A', ratePerMin: 15 },
   { name: 'Jooble', slug: 'jooble', kind: 'API', regions: ['GLOBAL'], industries: ['TECH','HEALTHCARE','FINANCE','EDUCATION','CREATIVE','SALES','LEGAL','OPERATIONS'], healthScore: 0.92, enabled: true, tier: 'A', ratePerMin: 60 },
   { name: 'USAJobs', slug: 'usajobs', kind: 'API', regions: ['US'], industries: ['TECH','HEALTHCARE','FINANCE','EDUCATION','LEGAL','OPERATIONS'], healthScore: 0.99, enabled: true, tier: 'A', ratePerMin: 60 },
   { name: 'Reed.co.uk', slug: 'reed', kind: 'API', regions: ['UK'], industries: ['TECH','HEALTHCARE','FINANCE','EDUCATION','CREATIVE','SALES','LEGAL','OPERATIONS'], healthScore: 0.95, enabled: true, tier: 'A' },
   { name: 'The Muse', slug: 'muse', kind: 'API', regions: ['GLOBAL'], industries: ['TECH','HEALTHCARE','FINANCE','EDUCATION','CREATIVE','SALES','LEGAL','OPERATIONS'], healthScore: 0.93, enabled: true, tier: 'A' },
-  { name: 'Arbeitsagentur', slug: 'arbeitsagentur', kind: 'API', regions: ['DE'], industries: ['TECH','HEALTHCARE','FINANCE','EDUCATION','CREATIVE','SALES','LEGAL','OPERATIONS'], healthScore: 0.94, enabled: true, tier: 'A' },
-  { name: 'EURES', slug: 'eures', kind: 'API', regions: ['EU'], industries: ['TECH','HEALTHCARE','FINANCE','EDUCATION','CREATIVE','SALES','LEGAL','OPERATIONS'], healthScore: 0.90, enabled: true, tier: 'A' },
-  { name: 'dev.to jobs', slug: 'devto-jobs', kind: 'JSON', regions: ['GLOBAL'], industries: ['TECH'], healthScore: 0.97, enabled: true, tier: 'A' },
 
   // Tier A — Industry verticals
   { name: 'eFinancialCareers', slug: 'efinancialcareers', kind: 'RSS', regions: ['GLOBAL'], industries: ['FINANCE'], healthScore: 0.88, enabled: true, tier: 'A' },
@@ -231,32 +240,18 @@ export const SOURCES: SourceEntry[] = [
   { name: 'idealist.org', slug: 'idealist', kind: 'RSS', regions: ['GLOBAL'], industries: ['OPERATIONS'], healthScore: 0.93, enabled: true, tier: 'A' },
   { name: 'Rigzone', slug: 'rigzone', kind: 'RSS', regions: ['GLOBAL'], industries: ['OPERATIONS'], healthScore: 0.86, enabled: true, tier: 'A' },
 
-  // Tier D — Tech / Remote (legacy pool, demoted to ~10% weight)
-  { name: 'RemoteOK', slug: 'remoteok', kind: 'JSON', regions: ['GLOBAL'], industries: ['TECH'], healthScore: 0.96, enabled: true, tier: 'D' },
-  { name: 'Remotive', slug: 'remotive', kind: 'JSON', regions: ['GLOBAL'], industries: ['TECH'], healthScore: 0.94, enabled: true, tier: 'D' },
-  { name: 'WeWorkRemotely', slug: 'wwr', kind: 'RSS', regions: ['GLOBAL'], industries: ['TECH'], healthScore: 0.97, enabled: true, tier: 'D' },
-  { name: 'Hacker News (monthly thread)', slug: 'hn-whoishiring', kind: 'API', regions: ['GLOBAL'], industries: ['TECH'], healthScore: 0.91, enabled: true, tier: 'D' },
-  { name: 'Working Nomads', slug: 'working-nomads', kind: 'RSS', regions: ['GLOBAL'], industries: ['TECH'], healthScore: 0.85, enabled: true, tier: 'D' },
-  { name: 'Europe Remote', slug: 'europe-remote', kind: 'RSS', regions: ['EU'], industries: ['TECH'], healthScore: 0.83, enabled: true, tier: 'D' },
-
-  // Tier B — Email ingestion (via Cloudflare Email Routing)
+  // Tier B — Email ingestion
   { name: 'LinkedIn (via email alerts)', slug: 'linkedin-email', kind: 'EMAIL', regions: ['GLOBAL'], industries: ['TECH','HEALTHCARE','FINANCE','EDUCATION','CREATIVE','SALES','LEGAL','OPERATIONS'], healthScore: 0.99, enabled: true, tier: 'B' },
   { name: 'Indeed (via email alerts)', slug: 'indeed-email', kind: 'EMAIL', regions: ['GLOBAL'], industries: ['TECH','HEALTHCARE','FINANCE','EDUCATION','CREATIVE','SALES','LEGAL','OPERATIONS'], healthScore: 0.99, enabled: true, tier: 'B' },
   { name: 'Glassdoor (via email alerts)', slug: 'glassdoor-email', kind: 'EMAIL', regions: ['GLOBAL'], industries: ['TECH','HEALTHCARE','FINANCE','EDUCATION','CREATIVE','SALES','LEGAL','OPERATIONS'], healthScore: 0.97, enabled: true, tier: 'B' },
   { name: 'Otta (via email alerts)', slug: 'otta-email', kind: 'EMAIL', regions: ['GLOBAL'], industries: ['TECH'], healthScore: 0.95, enabled: true, tier: 'B' },
   { name: 'Bayt (via email alerts)', slug: 'bayt-email', kind: 'EMAIL', regions: ['MENA'], industries: ['TECH','HEALTHCARE','FINANCE','EDUCATION','CREATIVE','SALES','LEGAL','OPERATIONS'], healthScore: 0.93, enabled: true, tier: 'B' },
 
-  // Tier C — Per-user authenticated sessions (Playwright)
-  { name: 'LinkedIn (per-user session)', slug: 'linkedin-session', kind: 'SESSION', regions: ['GLOBAL'], industries: ['TECH','HEALTHCARE','FINANCE','EDUCATION','CREATIVE','SALES','LEGAL','OPERATIONS'], healthScore: 0.91, enabled: true, tier: 'C' },
-  { name: 'Indeed (per-user session)', slug: 'indeed-session', kind: 'SESSION', regions: ['GLOBAL'], industries: ['TECH','HEALTHCARE','FINANCE','EDUCATION','CREATIVE','SALES','LEGAL','OPERATIONS'], healthScore: 0.90, enabled: true, tier: 'C' },
-  { name: 'Glassdoor (per-user session)', slug: 'glassdoor-session', kind: 'SESSION', regions: ['GLOBAL'], industries: ['TECH','HEALTHCARE','FINANCE','EDUCATION','CREATIVE','SALES','LEGAL','OPERATIONS'], healthScore: 0.88, enabled: true, tier: 'C' },
-  { name: 'Otta (per-user session)', slug: 'otta-session', kind: 'SESSION', regions: ['GLOBAL'], industries: ['TECH'], healthScore: 0.87, enabled: true, tier: 'C' },
-
-  // Tier E — Excluded (displayed for transparency)
-  { name: 'Upwork (excluded — Cloudflare wall)', slug: 'upwork', kind: 'RSS', regions: ['GLOBAL'], industries: ['TECH'], healthScore: 0, enabled: false, tier: 'E' },
-  { name: 'Freelancer (excluded — Cloudflare wall)', slug: 'freelancer', kind: 'RSS', regions: ['GLOBAL'], industries: ['TECH'], healthScore: 0, enabled: false, tier: 'E' },
-  { name: 'Wellfound (excluded — login wall)', slug: 'wellfound', kind: 'RSS', regions: ['US'], industries: ['TECH'], healthScore: 0, enabled: false, tier: 'E' },
-  { name: 'LinkedIn direct scraping (excluded — ToS)', slug: 'linkedin-scrape', kind: 'RSS', regions: ['GLOBAL'], industries: ['TECH','HEALTHCARE','FINANCE','EDUCATION','CREATIVE','SALES','LEGAL','OPERATIONS'], healthScore: 0, enabled: false, tier: 'E' },
+  // Tier C — Per-user authenticated sessions
+  { name: 'LinkedIn (your account)', slug: 'linkedin-session', kind: 'SESSION', regions: ['GLOBAL'], industries: ['TECH','HEALTHCARE','FINANCE','EDUCATION','CREATIVE','SALES','LEGAL','OPERATIONS'], healthScore: 0.91, enabled: true, tier: 'C' },
+  { name: 'Indeed (your account)', slug: 'indeed-session', kind: 'SESSION', regions: ['GLOBAL'], industries: ['TECH','HEALTHCARE','FINANCE','EDUCATION','CREATIVE','SALES','LEGAL','OPERATIONS'], healthScore: 0.90, enabled: true, tier: 'C' },
+  { name: 'Glassdoor (your account)', slug: 'glassdoor-session', kind: 'SESSION', regions: ['GLOBAL'], industries: ['TECH','HEALTHCARE','FINANCE','EDUCATION','CREATIVE','SALES','LEGAL','OPERATIONS'], healthScore: 0.88, enabled: true, tier: 'C' },
+  { name: 'Otta (your account)', slug: 'otta-session', kind: 'SESSION', regions: ['GLOBAL'], industries: ['TECH'], healthScore: 0.87, enabled: true, tier: 'C' },
 ]
 
 // ─── Industry taxonomy (8 industries × functions × seniorities) ───
@@ -361,20 +356,21 @@ export const SCAN_HISTORY = [
   { id: 'scan_005', startedAt: '2026-10-27T08:00:00Z', finishedAt: '2026-10-27T08:00:47Z', sourcesUsed: ['MyJobMag','BrighterMonday','Careers24','RemoteOK','Remotive'], jobsScraped: 341, jobsNew: 52, jobsMatched: 9, aiProvider: 'gemini-1.5-flash' },
 ]
 
-// ─── User profile mock (parsed from a hypothetical resume) ───
+// ─── User profile mock (cross-industry professional) ───
 export const MOCK_PROFILE = {
   seniority: 'SENIOR',
-  primaryStack: ['TypeScript', 'React', 'Next.js', 'Node.js', 'PostgreSQL', 'Prisma'],
-  domains: ['fintech', 'developer-tools'],
-  workModes: ['REMOTE', 'HYBRID'],
+  primaryStack: ['Analysis', 'Strategy', 'Communication', 'Project Management', 'Reporting', 'Stakeholder Management'],
+  domains: ['professional services', 'operations'],
+  workModes: ['REMOTE', 'HYBRID', 'ONSITE'],
   timezone: 'Africa/Lagos',
   salaryMin: 4000,
   salaryCurrency: 'USD',
-  redFlags: ['No crypto-only companies'],
-  greenFlags: ['4-day week ok', 'Async-friendly'],
+  redFlags: ['No commission-only roles'],
+  greenFlags: ['Cross-functional teams', 'Learning budget'],
   expertiseTags: [
     { industry: 'TECH', function: 'Frontend Engineering', seniority: 'Senior' },
-    { industry: 'TECH', function: 'Full-Stack Engineering', seniority: 'Senior' },
-    { industry: 'FINANCE', function: 'Audit', seniority: 'Mid' },
+    { industry: 'FINANCE', function: 'Audit', seniority: 'Senior' },
+    { industry: 'HEALTHCARE', function: 'Health Informatics', seniority: 'Senior' },
+    { industry: 'OPERATIONS', function: 'Program Management', seniority: 'Senior' },
   ],
 }

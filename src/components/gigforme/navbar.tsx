@@ -1,10 +1,9 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { useState, useEffect } from 'react'
 import { useTheme } from 'next-themes'
-import { Moon, Sun, Github, Menu, X } from 'lucide-react'
+import { Moon, Sun, Menu, X } from 'lucide-react'
 import { Logo } from './logo'
 
 interface NavbarProps {
@@ -26,7 +25,6 @@ export function Navbar({ onGetStarted, onScrollTo }: NavbarProps) {
   const navItems = [
     { id: 'dashboard', label: 'Dashboard' },
     { id: 'sources', label: 'Sources' },
-    { id: 'architecture', label: 'Architecture' },
   ]
 
   return (
@@ -37,8 +35,7 @@ export function Navbar({ onGetStarted, onScrollTo }: NavbarProps) {
           className="flex items-center gap-2 hover:opacity-80 transition-opacity"
         >
           <Logo size={28} animated />
-          <span className="font-semibold tracking-tight">Job Radar</span>
-          <Badge variant="outline" className="text-[10px] hidden sm:inline-flex">v1.1</Badge>
+          <span className="font-semibold tracking-tight">GigForMe</span>
         </button>
 
         <nav className="hidden md:flex items-center gap-1">
@@ -67,16 +64,6 @@ export function Navbar({ onGetStarted, onScrollTo }: NavbarProps) {
               {resolvedTheme === 'dark' ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
             </Button>
           )}
-
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            onClick={() => window.open('https://github.com/AjibadeHassan/job-radar', '_blank', 'noopener')}
-            aria-label="GitHub repo"
-          >
-            <Github className="h-3.5 w-3.5" />
-          </Button>
 
           <Button size="sm" onClick={onGetStarted} className="hidden sm:inline-flex h-8">
             Get started

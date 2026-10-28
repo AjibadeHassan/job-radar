@@ -15,13 +15,13 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Job Radar — AI-powered job intelligence for every profession",
-  description: "Multi-tenant, multi-industry job intelligence service. Upload your resume, pick your expertise, get Telegram alerts when scrapers find new matches. Zero cost. Africa-first. Generalist.",
-  keywords: ["job scanner", "job alerts", "telegram bot", "resume matching", "AI jobs", "Africa jobs", "remote jobs"],
-  authors: [{ name: "Job Radar" }],
+  title: "GigForMe — Find gigs that match you, not the other way around",
+  description: "Upload your resume, pick your expertise, and let GigForMe scan the market for roles that actually fit. Telegram alerts when the right opportunity surfaces. For every profession.",
+  keywords: ["job alerts", "telegram bot", "resume matching", "career", "gigs", "Africa jobs", "remote jobs", "professional"],
+  authors: [{ name: "GigForMe" }],
   openGraph: {
-    title: "Job Radar",
-    description: "AI-powered job intelligence for every profession",
+    title: "GigForMe",
+    description: "Find gigs that match you, not the other way around",
     type: "website",
   },
 };

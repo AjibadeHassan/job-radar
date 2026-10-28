@@ -1,13 +1,12 @@
 'use client'
 
 import { useState } from 'react'
-import { Navbar } from '@/components/job-radar/navbar'
-import { Hero } from '@/components/job-radar/hero'
-import { Dashboard } from '@/components/job-radar/dashboard'
-import { SourcesRegistry } from '@/components/job-radar/sources-registry'
-import { Architecture } from '@/components/job-radar/architecture'
-import { Footer } from '@/components/job-radar/footer'
-import { OnboardingWizard } from '@/components/job-radar/onboarding-wizard'
+import { Navbar } from '@/components/gigforme/navbar'
+import { Hero } from '@/components/gigforme/hero'
+import { Dashboard } from '@/components/gigforme/dashboard'
+import { SourcesRegistry } from '@/components/gigforme/sources-registry'
+import { Footer } from '@/components/gigforme/footer'
+import { OnboardingWizard } from '@/components/gigforme/onboarding-wizard'
 import { toast } from 'sonner'
 
 export default function Home() {
@@ -44,7 +43,6 @@ export default function Home() {
 
         <Dashboard />
         <SourcesRegistry />
-        <Architecture />
       </main>
 
       <Footer />

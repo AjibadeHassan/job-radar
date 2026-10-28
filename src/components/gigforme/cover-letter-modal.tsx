@@ -46,7 +46,7 @@ export function CoverLetterModal({ job, open, onClose }: CoverLetterModalProps) 
             </div>
             <Badge variant="secondary" className="text-xs gap-1">
               <Sparkles className="h-3 w-3" />
-              Gemini-generated
+              AI-drafted
             </Badge>
           </div>
         </DialogHeader>

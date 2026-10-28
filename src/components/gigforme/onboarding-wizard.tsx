@@ -54,13 +54,13 @@ export function OnboardingWizard({ open, onClose, onComplete }: OnboardingWizard
     setResumeUploaded(true)
     setParsing(true)
     setParsed(false)
-    // Simulate Gemini parse
+    // Simulate AI resume parse
     setTimeout(() => {
       setParsing(false)
       setParsed(true)
       setParsedData({
         seniority: 'Senior',
-        stack: ['TypeScript', 'React', 'Next.js', 'Node.js', 'PostgreSQL', 'Prisma'],
+                        stack: ['TypeScript', 'React', 'Next.js', 'Node.js', 'Analysis', 'Stakeholder Management'],
         domains: ['fintech', 'developer-tools'],
       })
     }, 1800)
@@ -126,7 +126,7 @@ export function OnboardingWizard({ open, onClose, onComplete }: OnboardingWizard
         <DialogHeader className="px-6 pt-6 pb-3 border-b border-border">
           <DialogTitle className="flex items-center gap-2 text-lg">
             <Sparkles className="h-4 w-4 text-primary" />
-            Set up your Job Radar
+            Set up your GigForMe
           </DialogTitle>
           <DialogDescription className="text-xs">
             Four steps. Takes about 90 seconds. You can change everything later.
@@ -181,7 +181,7 @@ export function OnboardingWizard({ open, onClose, onComplete }: OnboardingWizard
                   <div>
                     <h3 className="text-base font-semibold mb-1">Upload your resume</h3>
                     <p className="text-sm text-muted-foreground">
-                      PDF or DOCX. Gemini parses it into a structured profile in seconds.
+                      PDF or DOCX. We parse it into a structured profile in seconds.
                       You can confirm or edit any field afterward.
                     </p>
                   </div>
@@ -209,7 +209,7 @@ export function OnboardingWizard({ open, onClose, onComplete }: OnboardingWizard
                         <div className="flex-1 min-w-0">
                           <div className="text-sm font-medium truncate">{resumeName}</div>
                           <div className="text-xs text-muted-foreground">
-                            {parsing ? 'Parsing with Gemini…' : parsed ? 'Parsed successfully' : 'Uploaded'}
+                            {parsing ? 'Parsing your resume…' : parsed ? 'Parsed successfully' : 'Uploaded'}
                           </div>
                         </div>
                         {parsing && <RefreshCw className="h-4 w-4 animate-spin text-muted-foreground" />}
@@ -223,7 +223,7 @@ export function OnboardingWizard({ open, onClose, onComplete }: OnboardingWizard
                               <div key={i} className="h-3 rounded bg-muted animate-pulse" style={{ width: `${60 + i * 10}%` }} />
                             ))}
                           </div>
-                          <p className="text-xs text-muted-foreground">Extracting seniority, stack, domains…</p>
+                          <div className="text-xs text-muted-foreground">Extracting seniority, skills, domains…</div>
                         </div>
                       )}
 
@@ -377,7 +377,7 @@ export function OnboardingWizard({ open, onClose, onComplete }: OnboardingWizard
                         <p className="text-xs text-muted-foreground">
                           Or visit{' '}
                           <code className="text-xs px-1 py-0.5 rounded bg-muted font-mono">
-                            t.me/JobRadarBot?start=t7K2x9
+                            t.me/GigForMeBot?start=t7K2x9
                           </code>
                         </p>
                       </div>

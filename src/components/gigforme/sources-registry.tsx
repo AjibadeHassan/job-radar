@@ -13,11 +13,11 @@ import {
 import { SOURCES, type SourceEntry, type SourceKind } from '@/lib/mock-data'
 
 const TIER_LABELS: Record<SourceEntry['tier'], { label: string; color: string }> = {
-  A: { label: 'Tier A · Free aggregators & RSS', color: 'text-emerald-700 dark:text-emerald-400' },
-  B: { label: 'Tier B · Email ingestion', color: 'text-amber-700 dark:text-amber-400' },
-  C: { label: 'Tier C · Per-user sessions', color: 'text-purple-700 dark:text-purple-400' },
-  D: { label: 'Tier D · Tech / remote (legacy)', color: 'text-cyan-700 dark:text-cyan-400' },
-  E: { label: 'Tier E · Excluded (with reason)', color: 'text-rose-700 dark:text-rose-400' },
+  A: { label: 'Job boards & aggregators', color: 'text-emerald-700 dark:text-emerald-400' },
+  B: { label: 'From your email alerts', color: 'text-amber-700 dark:text-amber-400' },
+  C: { label: 'From your connected accounts', color: 'text-purple-700 dark:text-purple-400' },
+  D: { label: 'Tech & remote specialists', color: 'text-cyan-700 dark:text-cyan-400' },
+  E: { label: 'Not supported (and why)', color: 'text-rose-700 dark:text-rose-400' },
 }
 
 const KIND_ICONS: Record<SourceKind, React.ElementType> = {
@@ -66,13 +66,13 @@ export function SourcesRegistry() {
         <div>
           <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
             <Server className="h-3 w-3 text-primary" />
-            <span>40 sources · 35 enabled · 5 excluded by policy</span>
+            <span>{stats.total} sources · {stats.enabled} active across Africa + global</span>
           </div>
-          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Source registry</h2>
+          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Where we look</h2>
           <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
-            Every source has a measured health score (rolling avg of success rate).
-            Auto-paused below 0.5. Email ingestion + per-user Playwright sessions
-            replace fragile proxy scraping — zero cost, no ToS violations.
+            GigForMe scans job boards, RSS feeds, public APIs, and your connected
+            accounts in parallel. Sources are continuously health-checked and
+            auto-paused if they go down — so you only see fresh, real listings.
           </p>
         </div>
 
@@ -109,7 +109,7 @@ export function SourcesRegistry() {
             <CardContent className="p-4">
               <div className="flex items-center gap-2 mb-1">
                 <Mail className="h-3.5 w-3.5 text-amber-500" />
-                <span className="text-xs text-muted-foreground">Email sources</span>
+                <span className="text-xs text-muted-foreground">Email alerts</span>
               </div>
               <div className="text-2xl font-bold">{stats.byTier.find(t => t.tier === 'B')?.count}</div>
             </CardContent>
@@ -118,7 +118,7 @@ export function SourcesRegistry() {
             <CardContent className="p-4">
               <div className="flex items-center gap-2 mb-1">
                 <Bot className="h-3.5 w-3.5 text-purple-500" />
-                <span className="text-xs text-muted-foreground">Session sources</span>
+                <span className="text-xs text-muted-foreground">Connected</span>
               </div>
               <div className="text-2xl font-bold">{stats.byTier.find(t => t.tier === 'C')?.count}</div>
             </CardContent>
@@ -137,17 +137,27 @@ export function SourcesRegistry() {
             />
           </div>
           <div className="flex gap-1">
-            {(['ALL', 'A', 'B', 'C', 'D', 'E'] as const).map((t) => (
-              <Button
-                key={t}
-                variant={tierFilter === t ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setTierFilter(t)}
-                className="h-9 px-3"
-              >
-                {t === 'ALL' ? 'All tiers' : `Tier ${t}`}
-              </Button>
-            ))}
+            {(['ALL', 'A', 'B', 'C', 'D', 'E'] as const).map((t) => {
+              const labels: Record<typeof t, string> = {
+                ALL: 'All sources',
+                A: 'Job boards',
+                B: 'Email alerts',
+                C: 'Connected accounts',
+                D: 'Tech & remote',
+                E: 'Not supported',
+              }
+              return (
+                <Button
+                  key={t}
+                  variant={tierFilter === t ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setTierFilter(t)}
+                  className="h-9 px-3"
+                >
+                  {labels[t]}
+                </Button>
+              )
+            })}
           </div>
         </div>
 
@@ -265,13 +275,13 @@ export function SourcesRegistry() {
           <CardContent className="p-5 flex flex-wrap items-start gap-3">
             <ShieldCheck className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
             <div className="text-sm space-y-1">
-              <div className="font-medium">Zero-cost, ToS-compliant by design</div>
+              <div className="font-medium">Your accounts stay yours</div>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                We never scrape LinkedIn directly. We never buy residential proxies.
-                Account-required platforms are accessed via per-user authenticated Playwright sessions —
-                the request IS the user. Email alerts from LinkedIn, Indeed, Glassdoor, Otta are forwarded
-                by users to their unique inbox at <code className="font-mono text-foreground">user-{'{token}'}@radar.{'{your-domain}'}</code>{' '}
-                and parsed by Cloudflare Email Routing + Workers. $0/month cost.
+                For platforms that require an account (LinkedIn, Indeed, Glassdoor),
+                we use your own authenticated session — the same one you&apos;d use in your browser.
+                We never buy proxies, never share credentials, and you can disconnect any platform
+                at any time. Email alerts you already receive can be forwarded to your personal
+                GigForMe inbox for parsing — fully opt-in, fully under your control.
               </p>
             </div>
           </CardContent>

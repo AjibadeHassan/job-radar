@@ -1,12 +1,12 @@
-# Job Radar
+# GigForMe
 
-> AI-powered job intelligence for every profession. Multi-tenant, multi-industry, zero-cost. Africa-first. Successor to the single-tenant [`Job-scanner`](https://github.com/AjibadeHassan/Job-scanner) repo.
+> Find gigs that match you, not the other way around. Multi-tenant, multi-industry job intelligence for every profession. Africa-first. Successor to the single-tenant [`Job-scanner`](https://github.com/AjibadeHassan/Job-scanner) repo.
 
-[![Live preview](https://img.shields.io/badge/preview-running-emerald)](https://preview-z.ai/) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![Cost: $0/mo](https://img.shields.io/badge/operating%20cost-%240%2Fmo-emerald)](ARCHITECTURE.md#8-vps-infrastructure-zero-cost)
+[![Live preview](https://img.shields.io/badge/preview-running-emerald)](https://preview-z.ai/) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
 ## What is this?
 
-A multi-tenant SaaS where any user — nurse, accountant, paralegal, designer, engineer — uploads their resume, picks an expertise profile from 8 industries, connects their Telegram account, and starts receiving matched job notifications when scrapers find new roles.
+A multi-tenant SaaS where any user — engineer, nurse, accountant, teacher, designer, paralegal — uploads their resume, picks an expertise profile from 8 industries, connects their Telegram account, and starts receiving matched job notifications when scrapers find new roles.
 
 The system runs as a real backend with workers, not a GitHub Action cron. It replaces JSON-file storage with Postgres+pgvector, replaces fragile 0-100 LLM scoring with a two-stage embedding+structured-output pipeline, and replaces brittle proxy scraping with per-user authenticated Playwright sessions + Cloudflare email ingestion.
 
@@ -29,7 +29,7 @@ The system runs as a real backend with workers, not a GitHub Action cron. It rep
 ## Project structure
 
 ```
-job-radar/
+gigforme/
 ├── prisma/
 │   ├── schema.prisma              # SQLite-adapted (sandbox MVP)
 │   └── schema.production.prisma   # Postgres + pgvector (production)
@@ -41,7 +41,7 @@ job-radar/
 │   │   └── api/                   # REST + webhooks (planned)
 │   ├── components/
 │   │   ├── ui/                    # shadcn/ui (pre-installed)
-│   │   └── job-radar/             # custom components
+│   │   └── gigforme/             # custom components
 │   │       ├── hero.tsx
 │   │       ├── navbar.tsx
 │   │       ├── dashboard.tsx

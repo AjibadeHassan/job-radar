@@ -3,7 +3,7 @@
 import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Radar, ArrowRight, Sparkles, ShieldCheck, Globe2 } from 'lucide-react'
+import { Radar, ArrowRight, Sparkles, ShieldCheck, Globe2, Briefcase, Stethoscope, Scale } from 'lucide-react'
 import { Logo } from './logo'
 
 interface HeroProps {
@@ -43,8 +43,8 @@ export function Hero({ onGetStarted, onViewDashboard }: HeroProps) {
             <div className="flex items-center gap-3">
               <Logo size={48} animated />
               <div>
-                <h2 className="text-xl font-semibold tracking-tight">Job Radar</h2>
-                <p className="text-xs text-muted-foreground font-mono">v1.1 — zero-cost revision</p>
+                <h2 className="text-xl font-semibold tracking-tight">GigForMe</h2>
+                <p className="text-xs text-muted-foreground font-mono">opportunities that fit you</p>
               </div>
             </div>
 
@@ -53,27 +53,28 @@ export function Hero({ onGetStarted, onViewDashboard }: HeroProps) {
                 <Globe2 className="h-3 w-3" /> Africa-first
               </Badge>
               <Badge variant="secondary" className="gap-1">
-                <Radar className="h-3 w-3" /> 40 sources
+                <Radar className="h-3 w-3" /> Always scanning
               </Badge>
               <Badge variant="secondary" className="gap-1">
-                <ShieldCheck className="h-3 w-3" /> Zero-cost stack
+                <ShieldCheck className="h-3 w-3" /> Private by design
               </Badge>
               <Badge variant="secondary" className="gap-1">
-                <Sparkles className="h-3 w-3" /> Gemini-matched
+                <Sparkles className="h-3 w-3" /> AI-matched
               </Badge>
             </div>
 
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.05]">
-              Job intelligence for{' '}
+              Find gigs that{' '}
               <span className="bg-gradient-to-r from-primary to-emerald-400 bg-clip-text text-transparent">
-                every profession.
-              </span>
+                match you,
+              </span>{' '}
+              not the other way around.
             </h1>
 
             <p className="text-lg text-muted-foreground max-w-2xl leading-relaxed">
-              Upload your resume, pick your expertise from 8 industries, connect your Telegram.
-              Job Radar scrapes 40 sources, matches with Gemini embeddings, and pings you when
-              the right role surfaces — for nurses, accountants, paralegals, designers, anyone.
+              Upload your resume, pick what you do best. GigForMe scans the market and
+              pings your Telegram when the right role surfaces — for engineers, nurses,
+              accountants, teachers, designers, paralegals, anyone.
             </p>
 
             <div className="flex flex-wrap gap-3 pt-2">
@@ -93,11 +94,11 @@ export function Hero({ onGetStarted, onViewDashboard }: HeroProps) {
               </div>
               <div className="flex items-center gap-1.5">
                 <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                <span>Reuses your existing job-scanner Telegram bot</span>
+                <span>Telegram alerts you actually want</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <div className="w-1.5 h-1.5 rounded-full bg-rose-500" />
-                <span>Per-user authenticated sessions — not proxies</span>
+                <span>Works for every profession</span>
               </div>
             </div>
           </motion.div>
@@ -112,7 +113,7 @@ export function Hero({ onGetStarted, onViewDashboard }: HeroProps) {
           </motion.div>
         </div>
 
-        {/* Stats bar */}
+        {/* Stats bar — user-facing, no internal/limit info */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -120,10 +121,10 @@ export function Hero({ onGetStarted, onViewDashboard }: HeroProps) {
           className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-16 pt-8 border-t border-border"
         >
           {[
-            { label: 'Active sources', value: '40', sub: 'RSS · API · Email · Session' },
-            { label: 'Industries covered', value: '8', sub: 'Tech · Healthcare · Finance · +5' },
-            { label: 'Operating cost', value: '$0', sub: 'Until ~75 active users' },
+            { label: 'Professions covered', value: '8', sub: 'Tech · Healthcare · Finance · +5' },
+            { label: 'Active sources', value: '30+', sub: 'Across Africa + global remote' },
             { label: 'Match precision', value: '92%', sub: 'Top-tier score threshold' },
+            { label: 'Setup time', value: '90s', sub: 'Resume → first ping' },
           ].map((stat) => (
             <div key={stat.label} className="space-y-1">
               <div className="text-3xl font-bold tracking-tight text-foreground">{stat.value}</div>
@@ -131,6 +132,25 @@ export function Hero({ onGetStarted, onViewDashboard }: HeroProps) {
               <div className="text-xs text-muted-foreground">{stat.sub}</div>
             </div>
           ))}
+        </motion.div>
+
+        {/* Industry icons row */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.6, delay: 0.4 }}
+          className="flex flex-wrap items-center justify-center gap-6 mt-12 pt-8 border-t border-border"
+        >
+          <span className="text-xs text-muted-foreground">Built for every profession</span>
+          <div className="flex flex-wrap items-center gap-4 text-muted-foreground">
+            <div className="flex items-center gap-1.5"><Briefcase className="h-3.5 w-3.5" /> <span className="text-xs">Tech</span></div>
+            <div className="flex items-center gap-1.5"><Stethoscope className="h-3.5 w-3.5" /> <span className="text-xs">Healthcare</span></div>
+            <div className="flex items-center gap-1.5"><Briefcase className="h-3.5 w-3.5" /> <span className="text-xs">Finance</span></div>
+            <div className="flex items-center gap-1.5"><Briefcase className="h-3.5 w-3.5" /> <span className="text-xs">Education</span></div>
+            <div className="flex items-center gap-1.5"><Sparkles className="h-3.5 w-3.5" /> <span className="text-xs">Creative</span></div>
+            <div className="flex items-center gap-1.5"><Scale className="h-3.5 w-3.5" /> <span className="text-xs">Legal</span></div>
+            <div className="flex items-center gap-1.5"><Briefcase className="h-3.5 w-3.5" /> <span className="text-xs">Operations</span></div>
+          </div>
         </motion.div>
       </div>
     </section>
@@ -148,7 +168,7 @@ function TelegramMock() {
                 <Logo size={20} />
               </div>
               <div>
-                <div className="text-sm font-semibold">Job Radar Bot</div>
+                <div className="text-sm font-semibold">GigForMe Bot</div>
                 <div className="text-[10px] text-muted-foreground flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                   online
@@ -190,9 +210,9 @@ function TelegramMock() {
               </span>
               <span className="text-[10px] text-muted-foreground">2h ago</span>
             </div>
-            <div className="text-sm font-semibold leading-tight">Backend Engineer (Node.js)</div>
-            <div className="text-xs text-muted-foreground">Paystack · Remote</div>
-            <div className="text-[11px] text-rose-500">⚠ On-call rotation: 1 week / 6 weeks</div>
+            <div className="text-sm font-semibold leading-tight">Nurse Practitioner — ICU</div>
+            <div className="text-xs text-muted-foreground">LUTH · Lagos, NG · Onsite</div>
+            <div className="text-[11px] text-rose-500">⚠ 12-hour shift rotation</div>
           </div>
 
           <div className="text-center text-[10px] text-muted-foreground pt-1">
