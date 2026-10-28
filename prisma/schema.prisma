@@ -1,0 +1,231 @@
+// Job Radar — Prisma schema (sandbox MVP, SQLite)
+// Production schema (Postgres + pgvector + BullMQ) lives in /prisma/schema.production.prisma
+// Migration path: change datasource provider to "postgresql", enable pgvector extension,
+// replace Json fields with proper relations, replace Unsupported("vector") with real pgvector columns.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ── Auth.js v4 standard models ──────────────────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  emailVerified DateTime?
+  name          String?
+  image         String?
+  role          String    @default("USER")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  profile       Profile?
+  resumes       Resume[]
+  telegram      TelegramLink?
+  matches       UserJobMatch[]
+  scans         ScanRun[]
+  notifications NotificationLog[]
+  inbox         EmailInbox?
+  preferences   UserPreferences?
+  sessions      Session[]
+  accounts      Account[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ── User profile (parsed from resume) ────────────────────────────
+
+model Profile {
+  userId            String   @id
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  seniority         String   // SENIOR | MID | LEAD | STAFF | MANAGER
+  primaryStack      String   // JSON-serialized string[] (SQLite has no array type)
+  domains           String   // JSON-serialized string[]
+  workModes         String   // JSON-serialized WorkMode[]
+  timezone          String
+  salaryMin         Int?
+  salaryCurrency    String?
+  redFlags          String   // JSON-serialized string[]
+  greenFlags        String   // JSON-serialized string[]
+  updatedAt         DateTime @updatedAt
+}
+
+model Resume {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  version   Int
+  fileUrl   String
+  fileHash  String
+  rawText   String
+  parsedAt  DateTime @default(now())
+
+  @@unique([userId, version])
+}
+
+model UserPreferences {
+  userId              String   @id
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scanCadenceHours    Int      @default(6)
+  minMatchScore       Int      @default(60)
+  maxNotificationsDay Int      @default(5)
+  notifyWindowStart   String   @default("08:00")
+  notifyWindowEnd     String   @default("21:00")
+  mutedSources        String   @default("[]")
+  mutedIndustries     String   @default("[]")
+  preferredLanguages  String   @default("[\"en\"]")
+}
+
+// ── Telegram link (per-user chat) ───────────────────────────────
+
+model TelegramLink {
+  userId        String    @id
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chatId        String    @unique
+  verifiedAt    DateTime?
+  deepLinkToken String    @unique
+  mutedUntil    DateTime?
+  createdAt     DateTime  @default(now())
+}
+
+// ── Job sources registry ────────────────────────────────────────
+
+model Source {
+  id             String   @id @default(cuid())
+  name           String   @unique
+  slug           String   @unique
+  kind           String   // RSS | API | JSON | EMAIL | SESSION
+  region         String   // JSON-serialized string[]
+  industries     String   // JSON-serialized Industry[]
+  endpoint       String?
+  rateLimitPerMin Int?
+  healthScore    Float    @default(1.0)
+  lastScrapedAt  DateTime?
+  lastBrokeAt    DateTime?
+  enabled        Boolean  @default(true)
+  notes          String?
+  createdAt      DateTime @default(now())
+  jobs           JobPosting[]
+}
+
+// ── Job postings (shared across users) ──────────────────────────
+
+model JobPosting {
+  id           String   @id @default(cuid())
+  sourceId     String
+  source       Source   @relation(fields: [sourceId], references: [id])
+  externalId   String
+  title        String
+  company      String
+  location     String
+  workMode     String?
+  url          String
+  applyUrl     String?
+  postedAt     DateTime
+  rawText      String
+  industries   String   // JSON-serialized Industry[]
+  createdAt    DateTime @default(now())
+
+  matches      UserJobMatch[]
+
+  @@unique([sourceId, externalId])
+}
+
+// ── Per-user match state ─────────────────────────────────────────
+
+model UserJobMatch {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobId           String
+  job             JobPosting @relation(fields: [jobId], references: [id])
+  matchScore      Int
+  matchReason     String
+  redFlags        String   // JSON-serialized string[]
+  experienceFit   String?
+  coverLetter     String?
+  coverLetterTone String?
+  status          String   @default("NEW")
+  notifiedAt      DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([userId, jobId])
+}
+
+// ── Scan history + notifications ────────────────────────────────
+
+model ScanRun {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  startedAt    DateTime @default(now())
+  finishedAt   DateTime?
+  sourcesUsed   String   // JSON-serialized string[]
+  jobsScraped   Int      @default(0)
+  jobsNew       Int      @default(0)
+  jobsMatched  Int      @default(0)
+  aiProvider   String?
+  error        String?
+}
+
+model NotificationLog {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobId     String?
+  channel   String   // TELEGRAM | EMAIL
+  sentAt    DateTime @default(now())
+  status    String
+  error     String?
+}
+
+// ── Email ingestion (Tier B — Cloudflare Email Routing → Worker) ─
+
+model EmailInbox {
+  userId    String   @id
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  address   String   @unique
+  createdAt DateTime @default(now())
+}
+
+model InboundEmail {
+  id           String   @id @default(cuid())
+  inboxId      String
+  fromEmail    String
+  fromDomain   String
+  subject      String
+  rawBody      String
+  parsedJobs   String?  // JSON-serialized
+  receivedAt   DateTime @default(now())
+  processedAt  DateTime?
+  status       String   @default("PENDING")
+}

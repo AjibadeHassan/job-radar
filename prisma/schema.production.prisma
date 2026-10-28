@@ -1,0 +1,294 @@
+// Job Radar — Production Prisma schema (Postgres + pgvector)
+// This is the schema documented in /download/architecture.md §3.
+// NOT used in sandbox — sandbox uses SQLite-adapted schema.prisma.
+// To migrate: set DATABASE_URL to Postgres, run `prisma migrate dev --name init`.
+
+generator client {
+  provider = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [vector]
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  emailVerified DateTime?
+  name          String?
+  image         String?
+  role          Role      @default(USER)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts      Account[]
+  sessions      Session[]
+  profile       Profile?
+  resumes       Resume[]
+  telegram      TelegramLink?
+  matches       UserJobMatch[]
+  scans         ScanRun[]
+  notifications NotificationLog[]
+  inbox         EmailInbox?
+  preferences   UserPreferences?
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Profile {
+  userId            String   @id
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  seniority         Seniority
+  primaryStack      String[]
+  domains           String[]
+  workModes         WorkMode[]
+  timezone          String
+  salaryMin         Int?
+  salaryCurrency    String?  @default("USD")
+  redFlags          String[]
+  greenFlags        String[]
+  embedding         Unsupported("vector(768)")?
+  embeddingModel    String?
+  embeddingUpdatedAt DateTime?
+  updatedAt         DateTime @updatedAt
+}
+
+model Resume {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  version   Int
+  fileUrl   String
+  fileHash  String
+  rawText   String
+  parsedAt  DateTime @default(now())
+
+  @@unique([userId, version])
+}
+
+model UserPreferences {
+  userId              String   @id
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scanCadenceHours    Int      @default(6)
+  minMatchScore       Int      @default(60)
+  maxNotificationsDay Int      @default(5)
+  notifyWindowStart   String   @default("08:00")
+  notifyWindowEnd     String   @default("21:00")
+  mutedSources        String[] @default([])
+  mutedIndustries     String[] @default([])
+  preferredLanguages  String[] @default(["en"])
+}
+
+model TelegramLink {
+  userId        String    @id
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chatId        String    @unique
+  verifiedAt    DateTime?
+  deepLinkToken String    @unique
+  mutedUntil    DateTime?
+  createdAt     DateTime  @default(now())
+}
+
+model ExpertiseTag {
+  id             String    @id @default(cuid())
+  industry       Industry
+  function       String
+  seniority      Seniority?
+  specialization String?
+  label          String
+  slug           String    @unique
+}
+
+model Source {
+  id             String   @id @default(cuid())
+  name           String   @unique
+  slug           String   @unique
+  kind           SourceKind
+  region         String[]
+  industries     Industry[]
+  endpoint       String?
+  rateLimitPerMin Int?
+  healthScore    Float    @default(1.0)
+  lastScrapedAt  DateTime?
+  lastBrokeAt    DateTime?
+  enabled        Boolean  @default(true)
+  notes          String?
+  createdAt      DateTime @default(now())
+}
+
+model JobPosting {
+  id              String   @id @default(cuid())
+  sourceId        String
+  source          Source   @relation(fields: [sourceId], references: [id])
+  externalId      String
+  title           String
+  company         String
+  location        String
+  workMode        WorkMode?
+  url             String
+  applyUrl        String?
+  postedAt        DateTime
+  rawText         String
+  embedding       Unsupported("vector(768)")?
+  embeddingModel  String?
+  embeddingUpdatedAt DateTime?
+  industries      Industry[]
+  createdAt       DateTime @default(now())
+
+  matches         UserJobMatch[]
+
+  @@unique([sourceId, externalId])
+  @@index([postedAt])
+}
+
+model UserJobMatch {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobId           String
+  job             JobPosting @relation(fields: [jobId], references: [id])
+  matchScore      Int
+  matchReason     String
+  redFlags        String[]
+  experienceFit   String?
+  coverLetter     String?
+  coverLetterTone String?
+  coverLetterHash String?
+  status          MatchStatus @default(NEW)
+  notifiedAt      DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([userId, jobId])
+  @@index([userId, status])
+  @@index([userId, matchScore])
+}
+
+model ScanRun {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  startedAt    DateTime @default(now())
+  finishedAt   DateTime?
+  sourcesUsed  String[]
+  jobsScraped  Int      @default(0)
+  jobsNew       Int      @default(0)
+  jobsMatched   Int      @default(0)
+  aiProvider   String?
+  error        String?
+}
+
+model NotificationLog {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobId     String?
+  channel   NotificationChannel
+  sentAt    DateTime @default(now())
+  status    String
+  error     String?
+}
+
+model EmailInbox {
+  userId    String   @id
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  address   String   @unique
+  createdAt DateTime @default(now())
+}
+
+model InboundEmail {
+  id           String   @id @default(cuid())
+  inboxId      String
+  fromEmail    String
+  fromDomain   String
+  subject      String
+  rawBody      String
+  parsedJobs   Json?
+  receivedAt   DateTime @default(now())
+  processedAt  DateTime?
+  status       String   @default("PENDING")
+
+  @@index([inboxId, receivedAt])
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum Seniority {
+  INTERN
+  JUNIOR
+  MID
+  SENIOR
+  LEAD
+  STAFF
+  MANAGER
+  DIRECTOR
+}
+
+enum WorkMode {
+  REMOTE
+  HYBRID
+  ONSITE
+}
+
+enum Industry {
+  TECH
+  HEALTHCARE
+  FINANCE
+  EDUCATION
+  CREATIVE
+  SALES
+  LEGAL
+  OPERATIONS
+}
+
+enum SourceKind {
+  RSS
+  API
+  JSON
+  EMAIL
+  SESSION
+}
+
+enum MatchStatus {
+  NEW
+  SEEN
+  APPLYING
+  APPLIED
+  INTERVIEWING
+  REJECTED
+  IGNORED
+}
+
+enum NotificationChannel {
+  TELEGRAM
+  EMAIL
+}
