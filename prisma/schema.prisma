@@ -1,18 +1,17 @@
-// Job Radar — Prisma schema (sandbox MVP, SQLite)
-// Production schema (Postgres + pgvector + BullMQ) lives in /prisma/schema.production.prisma
-// Migration path: change datasource provider to "postgresql", enable pgvector extension,
-// replace Json fields with proper relations, replace Unsupported("vector") with real pgvector columns.
+// GigForMe — Prisma schema (PostgreSQL + pgvector)
+// Production schema. Migrated against Neon.
+// To run migrations: prisma migrate dev --name init
 
 generator client {
   provider = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [vector]
 }
-
-// ── Auth.js v4 standard models ──────────────────────────────────
 
 model User {
   id            String    @id @default(cuid())
@@ -20,10 +19,12 @@ model User {
   emailVerified DateTime?
   name          String?
   image         String?
-  role          String    @default("USER")
+  role          Role      @default(USER)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
+  accounts      Account[]
+  sessions      Session[]
   profile       Profile?
   resumes       Resume[]
   telegram      TelegramLink?
@@ -32,8 +33,6 @@ model User {
   notifications NotificationLog[]
   inbox         EmailInbox?
   preferences   UserPreferences?
-  sessions      Session[]
-  accounts      Account[]
 }
 
 model Account {
@@ -61,20 +60,21 @@ model Session {
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-// ── User profile (parsed from resume) ────────────────────────────
-
 model Profile {
   userId            String   @id
   user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  seniority         String   // SENIOR | MID | LEAD | STAFF | MANAGER
-  primaryStack      String   // JSON-serialized string[] (SQLite has no array type)
-  domains           String   // JSON-serialized string[]
-  workModes         String   // JSON-serialized WorkMode[]
+  seniority         Seniority
+  primaryStack      String[]
+  domains           String[]
+  workModes         WorkMode[]
   timezone          String
   salaryMin         Int?
-  salaryCurrency    String?
-  redFlags          String   // JSON-serialized string[]
-  greenFlags        String   // JSON-serialized string[]
+  salaryCurrency    String?  @default("USD")
+  redFlags          String[]
+  greenFlags        String[]
+  embedding         Unsupported("vector(768)")?
+  embeddingModel    String?
+  embeddingUpdatedAt DateTime?
   updatedAt         DateTime @updatedAt
 }
 
@@ -99,12 +99,10 @@ model UserPreferences {
   maxNotificationsDay Int      @default(5)
   notifyWindowStart   String   @default("08:00")
   notifyWindowEnd     String   @default("21:00")
-  mutedSources        String   @default("[]")
-  mutedIndustries     String   @default("[]")
-  preferredLanguages  String   @default("[\"en\"]")
+  mutedSources        String[] @default([])
+  mutedIndustries     String[] @default([])
+  preferredLanguages  String[] @default(["en"])
 }
-
-// ── Telegram link (per-user chat) ───────────────────────────────
 
 model TelegramLink {
   userId        String    @id
@@ -116,15 +114,23 @@ model TelegramLink {
   createdAt     DateTime  @default(now())
 }
 
-// ── Job sources registry ────────────────────────────────────────
+model ExpertiseTag {
+  id             String    @id @default(cuid())
+  industry       Industry
+  function       String
+  seniority      Seniority?
+  specialization String?
+  label          String
+  slug           String    @unique
+}
 
 model Source {
   id             String   @id @default(cuid())
   name           String   @unique
   slug           String   @unique
-  kind           String   // RSS | API | JSON | EMAIL | SESSION
-  region         String   // JSON-serialized string[]
-  industries     String   // JSON-serialized Industry[]
+  kind           SourceKind
+  region         String[]
+  industries     Industry[]
   endpoint       String?
   rateLimitPerMin Int?
   healthScore    Float    @default(1.0)
@@ -136,30 +142,30 @@ model Source {
   jobs           JobPosting[]
 }
 
-// ── Job postings (shared across users) ──────────────────────────
-
 model JobPosting {
-  id           String   @id @default(cuid())
-  sourceId     String
-  source       Source   @relation(fields: [sourceId], references: [id])
-  externalId   String
-  title        String
-  company      String
-  location     String
-  workMode     String?
-  url          String
-  applyUrl     String?
-  postedAt     DateTime
-  rawText      String
-  industries   String   // JSON-serialized Industry[]
-  createdAt    DateTime @default(now())
+  id              String   @id @default(cuid())
+  sourceId        String
+  source          Source   @relation(fields: [sourceId], references: [id])
+  externalId      String
+  title           String
+  company         String
+  location        String
+  workMode        WorkMode?
+  url             String
+  applyUrl        String?
+  postedAt        DateTime
+  rawText         String
+  embedding       Unsupported("vector(768)")?
+  embeddingModel  String?
+  embeddingUpdatedAt DateTime?
+  industries      Industry[]
+  createdAt       DateTime @default(now())
 
-  matches      UserJobMatch[]
+  matches         UserJobMatch[]
 
   @@unique([sourceId, externalId])
+  @@index([postedAt])
 }
-
-// ── Per-user match state ─────────────────────────────────────────
 
 model UserJobMatch {
   id              String   @id @default(cuid())
@@ -169,19 +175,20 @@ model UserJobMatch {
   job             JobPosting @relation(fields: [jobId], references: [id])
   matchScore      Int
   matchReason     String
-  redFlags        String   // JSON-serialized string[]
+  redFlags        String[]
   experienceFit   String?
   coverLetter     String?
   coverLetterTone String?
-  status          String   @default("NEW")
+  coverLetterHash String?
+  status          MatchStatus @default(NEW)
   notifiedAt      DateTime?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
   @@unique([userId, jobId])
+  @@index([userId, status])
+  @@index([userId, matchScore])
 }
-
-// ── Scan history + notifications ────────────────────────────────
 
 model ScanRun {
   id           String   @id @default(cuid())
@@ -189,10 +196,10 @@ model ScanRun {
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   startedAt    DateTime @default(now())
   finishedAt   DateTime?
-  sourcesUsed   String   // JSON-serialized string[]
-  jobsScraped   Int      @default(0)
+  sourcesUsed  String[]
+  jobsScraped  Int      @default(0)
   jobsNew       Int      @default(0)
-  jobsMatched  Int      @default(0)
+  jobsMatched   Int      @default(0)
   aiProvider   String?
   error        String?
 }
@@ -202,13 +209,11 @@ model NotificationLog {
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   jobId     String?
-  channel   String   // TELEGRAM | EMAIL
+  channel   NotificationChannel
   sentAt    DateTime @default(now())
   status    String
   error     String?
 }
-
-// ── Email ingestion (Tier B — Cloudflare Email Routing → Worker) ─
 
 model EmailInbox {
   userId    String   @id
@@ -224,8 +229,66 @@ model InboundEmail {
   fromDomain   String
   subject      String
   rawBody      String
-  parsedJobs   String?  // JSON-serialized
+  parsedJobs   Json?
   receivedAt   DateTime @default(now())
   processedAt  DateTime?
   status       String   @default("PENDING")
+
+  @@index([inboxId, receivedAt])
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum Seniority {
+  INTERN
+  JUNIOR
+  MID
+  SENIOR
+  LEAD
+  STAFF
+  MANAGER
+  DIRECTOR
+}
+
+enum WorkMode {
+  REMOTE
+  HYBRID
+  ONSITE
+}
+
+enum Industry {
+  TECH
+  HEALTHCARE
+  FINANCE
+  EDUCATION
+  CREATIVE
+  SALES
+  LEGAL
+  OPERATIONS
+}
+
+enum SourceKind {
+  RSS
+  API
+  JSON
+  EMAIL
+  SESSION
+}
+
+enum MatchStatus {
+  NEW
+  SEEN
+  APPLYING
+  APPLIED
+  INTERVIEWING
+  REJECTED
+  IGNORED
+}
+
+enum NotificationChannel {
+  TELEGRAM
+  EMAIL
 }
