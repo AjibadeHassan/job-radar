@@ -1,0 +1,12 @@
+{
+  "crons": [
+    {
+      "path": "/api/scan-sweep",
+      "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/telegram-poll",
+      "schedule": "* * * * *"
+    }
+  ]
+}
