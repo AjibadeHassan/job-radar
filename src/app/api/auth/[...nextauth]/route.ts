@@ -1,4 +1,3 @@
-// NextAuth v4 catch-all route handler
 import NextAuth from 'next-auth'
 import { authOptions } from '@/lib/auth'
 

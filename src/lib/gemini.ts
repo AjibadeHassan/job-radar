@@ -1,229 +1,280 @@
-// GigForMe — Gemini AI client wrapper
-// Handles: text embeddings (768-dim), structured-output JSON matching, cover letter generation
-// All calls go to Gemini 1.5 Flash (gemini-1.5-flash) on the free tier (1500 req/day).
+// Gemini API client — embeddings + structured-output matching
+// Works from Vercel's deploy regions (US/EU/Asia) — sandbox may be geo-blocked,
+// but production will be fine.
+//
+// Free tier limits (no billing required):
+//   - 15 RPM, 1500 req/day
+//   - 1M tokens/min
+//   - Reaches ceiling ~75 active users scanning 4x/day
 
-import { GoogleGenerativeAI } from '@google/generative-ai'
+const BASE = 'https://generativelanguage.googleapis.com/v1beta'
 
-// Lazy initialization — only throws if Gemini is actually called without the key
-let genAI: GoogleGenerativeAI | null = null
-function getClient() {
-  if (!process.env.GEMINI_API_KEY) throw new Error('GEMINI_API_KEY not set')
-  if (!genAI) genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
-  return genAI
+function apiKey(): string {
+  const k = process.env.GEMINI_API_KEY
+  if (!k) throw new Error('GEMINI_API_KEY not set')
+  return k
 }
 
-// ── Models ──────────────────────────────────────────────────────────
-const EMBED_MODEL = 'text-embedding-004'      // 768-dim, multilingual, free
-const TEXT_MODEL = 'gemini-1.5-flash'         // 1M tokens/min, 1500 req/day free
+export interface EmbeddingResult {
+  values: number[]
+}
 
-// ── Embedding ───────────────────────────────────────────────────────
-
+/**
+ * Generate an embedding for a single text input using Gemini text-embedding-004.
+ * Returns a 768-dim float vector — stored in Profile.embedding / JobPosting.embedding.
+ */
 export async function embedText(text: string): Promise<number[]> {
-  const model = getClient().getGenerativeModel({ model: EMBED_MODEL })
-  const result = await model.embedContent({
-    content: { role: 'user', parts: [{ text: text.slice(0, 8000) }] },  // truncate to safe limit
-  })
-  return result.embedding.values
-}
-
-export async function embedBatch(texts: string[]): Promise<number[][]> {
-  // Gemini supports up to 100 texts per batch call
-  const model = getClient().getGenerativeModel({ model: EMBED_MODEL })
-  const batches: number[][][] = []
-  for (let i = 0; i < texts.length; i += 100) {
-    const batch = texts.slice(i, i + 100)
-    const results = await Promise.all(
-      batch.map((text) =>
-        model.embedContent({
-          content: { role: 'user', parts: [{ text: text.slice(0, 8000) }] },
-        })
-      )
-    )
-    batches.push(results.map((r) => r.embedding.values))
+  const res = await fetch(
+    `${BASE}/models/text-embedding-004:embedContent?key=${apiKey()}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'models/text-embedding-004',
+        content: { parts: [{ text: text.slice(0, 8000) }] }, // truncate to 8k chars
+      }),
+    }
+  )
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(`Gemini embedText failed: ${res.status} ${JSON.stringify(err).slice(0, 200)}`)
   }
-  return batches.flat()
+  const data = await res.json()
+  return data.embedding?.values ?? []
 }
 
-// ── Structured-output matching ──────────────────────────────────────
+/**
+ * Generate embeddings for up to 100 texts in a single batched call.
+ * Saves API quota — 1 request per 100 texts instead of 100 requests.
+ */
+export async function embedBatch(texts: string[]): Promise<number[][]> {
+  if (texts.length === 0) return []
+  if (texts.length > 100) {
+    // Recurse for larger batches
+    const first = await embedBatch(texts.slice(0, 100))
+    const rest = await embedBatch(texts.slice(100))
+    return [...first, ...rest]
+  }
+
+  const res = await fetch(
+    `${BASE}/models/text-embedding-004:batchEmbedContents?key=${apiKey()}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        requests: texts.map((t) => ({
+          model: 'models/text-embedding-004',
+          content: { parts: [{ text: t.slice(0, 8000) }] },
+        })),
+      }),
+    }
+  )
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(`Gemini embedBatch failed: ${res.status} ${JSON.stringify(err).slice(0, 200)}`)
+  }
+  const data = await res.json()
+  return (data.embeddings ?? []).map((e: { values: number[] }) => e.values)
+}
 
 export interface MatchResult {
-  score: number  // 0–100
+  score: number
   reason: string
   redFlags: string[]
   experienceFit: 'UNDERQUALIFIED' | 'FIT' | 'OVERQUALIFIED'
-  coverLetterTone: 'FORMAL' | 'CONVERSATIONAL' | 'CONFIDENT'
 }
 
-const MATCH_SCHEMA = {
-  type: 'ARRAY',
-  items: {
-    type: 'OBJECT',
-    properties: {
-      jobId: { type: 'STRING' },
-      score: { type: 'INTEGER', minimum: 0, maximum: 100 },
-      reason: { type: 'STRING', maxLength: 280 },
-      redFlags: { type: 'ARRAY', items: { type: 'STRING' } },
-      experienceFit: { type: 'STRING', enum: ['UNDERQUALIFIED', 'FIT', 'OVERQUALIFIED'] },
-      coverLetterTone: { type: 'STRING', enum: ['FORMAL', 'CONVERSATIONAL', 'CONFIDENT'] },
-    },
-    required: ['jobId', 'score', 'reason', 'experienceFit'],
-  },
-}
-
+/**
+ * Run structured-output matching on up to 5 jobs against a user profile.
+ * Returns MatchResult[] aligned with the input jobs array.
+ *
+ * Uses responseMimeType: 'application/json' + responseSchema for guaranteed JSON.
+ * Batches 5 jobs per call to amortize tokens (saves ~80% cost vs 1-by-1).
+ */
 export async function matchJobs(
-  jobs: Array<{ id: string; title: string; company: string; description: string }>,
-  profile: {
-    seniority: string
-    primaryStack: string[]
-    domains: string[]
-    workModes: string[]
-    redFlags: string[]
-    greenFlags: string[]
-  }
-): Promise<MatchResult[]> {
-  const model = getClient().getGenerativeModel({
-    model: TEXT_MODEL,
-    generationConfig: {
-      responseMimeType: 'application/json',
-      responseSchema: MATCH_SCHEMA,
-      temperature: 0.3,
-    },
-  })
+  jobs: Array<{ id: string; title: string; company: string; description: string; location: string }>,
+  profile: { seniority: string; primaryStack: string[]; domains: string[]; workModes: string[]; redFlags: string[]; greenFlags: string[] }
+): Promise<Record<string, MatchResult>> {
+  if (jobs.length === 0) return {}
 
-  const profileText = `Seniority: ${profile.seniority}
-Stack/skills: ${profile.primaryStack.join(', ')}
-Domains: ${profile.domains.join(', ')}
-Work modes: ${profile.workModes.join(', ')}
-Red flags (avoid): ${profile.redFlags.join(', ') || 'none'}
-Green flags (prefer): ${profile.greenFlags.join(', ') || 'none'}`
+  const profileText = `Seniority: ${profile.seniority}. Stack: ${profile.primaryStack.join(', ')}. Domains: ${profile.domains.join(', ')}. Work modes: ${profile.workModes.join(', ')}. Wants: ${profile.greenFlags.join(', ') || 'none'}. Avoids: ${profile.redFlags.join(', ') || 'none'}.`
 
   const jobsText = jobs
-    .map((j, i) => `JOB ${i + 1} (id: ${j.id})
+    .map(
+      (j, i) =>
+        `JOB ${i + 1} (id: ${j.id}):
 Title: ${j.title}
 Company: ${j.company}
-Description: ${j.description.slice(0, 1200)}`)
+Location: ${j.location}
+Description: ${j.description.slice(0, 800)}`
+    )
     .join('\n\n')
 
-  const prompt = `You are a career match evaluator. Score each job 0-100 against the candidate profile below.
+  const prompt = `You are a senior recruiter evaluating job fit for a candidate.
 
-CANDIDATE PROFILE:
+Candidate profile:
 ${profileText}
 
-JOBS TO EVALUATE:
+Jobs to evaluate:
 ${jobsText}
 
-For each job, return:
-- jobId: the job id provided
-- score: 0-100 (use full range — 90+ means exceptional fit, 50-70 means partial, <40 means poor)
-- reason: one-sentence explanation referencing specific skills/stack/domain alignment
-- redFlags: array of concerns (e.g. ["on-call rotation", "crypto exposure"]) — empty array if none
-- experienceFit: UNDERQUALIFIED if candidate lacks 2+ years of req experience, FIT if matches, OVERQUALIFIED if candidate is 2+ levels above
-- coverLetterTone: FORMAL for traditional (finance/legal/healthcare), CONVERSATIONAL for startups, CONFIDENT for senior engineering`
+For EACH job, return a JSON object with:
+- score: 0-100 (how well the candidate fits THIS job)
+- reason: one sentence (max 280 chars) explaining the score
+- redFlags: array of concerns (empty array if none)
+- experienceFit: "UNDERQUALIFIED" | "FIT" | "OVERQUALIFIED"
 
-  const result = await model.generateContent(prompt)
-  const text = result.response.text()
-  try {
-    return JSON.parse(text)
-  } catch {
-    return []
+Return a JSON object: { "results": { "<jobId>": { "score": N, "reason": "...", "redFlags": [...], "experienceFit": "..." } } }`
+
+  const res = await fetch(
+    `${BASE}/models/gemini-1.5-flash:generateContent?key=${apiKey()}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: {
+          temperature: 0.3, // low temp = more deterministic scoring
+          responseMimeType: 'application/json',
+          maxOutputTokens: 2000,
+        },
+      }),
+    }
+  )
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(`Gemini matchJobs failed: ${res.status} ${JSON.stringify(err).slice(0, 200)}`)
   }
+
+  const data = await res.json()
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? '{}'
+  const parsed = JSON.parse(text)
+  return parsed.results ?? parsed // tolerant parse — handle both {results:{}} and direct {id:{}}
 }
 
-// ── Resume parsing (one-shot, structured output) ──────────────────
+/**
+ * Generate a cover letter for a specific job.
+ * Cached by (userId, jobId, tone) hash — only generated once per triple.
+ */
+export async function generateCoverLetter(
+  job: { title: string; company: string; description: string; location: string },
+  profile: { seniority: string; primaryStack: string[]; domains: string[]; name?: string },
+  tone: 'FORMAL' | 'CONVERSATIONAL' | 'CONFIDENT' = 'FORMAL'
+): Promise<string> {
+  const profileText = `Seniority: ${profile.seniority}
+Top skills: ${profile.primaryStack.join(', ')}
+Domains: ${profile.domains.join(', ')}
+Candidate name: ${profile.name ?? '[Your Name]'}`
 
-export interface ParsedProfile {
-  seniority: 'INTERN' | 'JUNIOR' | 'MID' | 'SENIOR' | 'LEAD' | 'STAFF' | 'MANAGER' | 'DIRECTOR'
+  const prompt = `Write a cover letter for this job application.
+
+JOB:
+Title: ${job.title}
+Company: ${job.company}
+Location: ${job.location}
+Description: ${job.description.slice(0, 1000)}
+
+CANDIDATE:
+${profileText}
+
+Tone: ${tone.toLowerCase()}.
+
+Rules:
+- 3 short paragraphs, ~200 words total
+- Open with why this specific company interests you
+- Middle paragraph: one concrete achievement with a measurable result
+- Close with a single-sentence call to action
+- Sign off as "[Your Name]" (literal placeholder) — never invent a name
+- No bullet points, no markdown headings
+- Plain prose only`
+
+  const res = await fetch(
+    `${BASE}/models/gemini-1.5-flash:generateContent?key=${apiKey()}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: {
+          temperature: 0.7,
+          maxOutputTokens: 1000,
+        },
+      }),
+    }
+  )
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(`Gemini generateCoverLetter failed: ${res.status} ${JSON.stringify(err).slice(0, 200)}`)
+  }
+
+  const data = await res.json()
+  return data.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
+}
+
+export interface ParsedResume {
+  seniority: string
   primaryStack: string[]
   domains: string[]
-  workModes: ('REMOTE' | 'HYBRID' | 'ONSITE')[]
+  workModes: string[]
   redFlags: string[]
   greenFlags: string[]
   suggestedIndustries: string[]
   confidence: number
 }
 
-const RESUME_SCHEMA = {
-  type: 'OBJECT',
-  properties: {
-    seniority: { type: 'STRING', enum: ['INTERN', 'JUNIOR', 'MID', 'SENIOR', 'LEAD', 'STAFF', 'MANAGER', 'DIRECTOR'] },
-    primaryStack: { type: 'ARRAY', items: { type: 'STRING' } },
-    domains: { type: 'ARRAY', items: { type: 'STRING' } },
-    workModes: { type: 'ARRAY', items: { type: 'STRING', enum: ['REMOTE', 'HYBRID', 'ONSITE'] } },
-    redFlags: { type: 'ARRAY', items: { type: 'STRING' } },
-    greenFlags: { type: 'ARRAY', items: { type: 'STRING' } },
-    suggestedIndustries: { type: 'ARRAY', items: { type: 'STRING' } },
-    confidence: { type: 'NUMBER', minimum: 0, maximum: 1 },
-  },
-  required: ['seniority', 'primaryStack', 'domains', 'workModes', 'suggestedIndustries', 'confidence'],
-}
-
-export async function parseResume(resumeText: string): Promise<ParsedProfile> {
-  const model = getClient().getGenerativeModel({
-    model: TEXT_MODEL,
-    generationConfig: {
-      responseMimeType: 'application/json',
-      responseSchema: RESUME_SCHEMA,
-      temperature: 0.2,
-    },
-  })
-
-  const prompt = `Extract the candidate profile from this resume. Be conservative — only include skills/tools/domains that are clearly demonstrated by work experience, not just mentioned.
-
-Industries to consider: TECH, HEALTHCARE, FINANCE, EDUCATION, CREATIVE, SALES, LEGAL, OPERATIONS.
-
-Work modes: infer from the resume's stated preferences or current role's nature. Default to ['REMOTE', 'HYBRID'] if unclear.
-
-Seniority: pick the level that matches the candidate's most recent role. SENIOR = 5-8 years experience, LEAD = 8-12 years, STAFF = 10+ years, MANAGER = people management, MID = 2-5 years, JUNIOR = 0-2 years.
+/**
+ * Parse a resume text into a structured Profile schema via Gemini.
+ * Called once at onboarding — user confirms/edits the result before save.
+ */
+export async function parseResume(resumeText: string): Promise<ParsedResume> {
+  const prompt = `You are an expert recruiter. Parse this resume into a structured profile.
 
 RESUME TEXT:
-${resumeText.slice(0, 30000)}`
+${resumeText.slice(0, 12000)}
 
-  const result = await model.generateContent(prompt)
-  const text = result.response.text()
-  return JSON.parse(text)
+Return ONLY valid JSON matching this schema:
+{
+  "seniority": "INTERN" | "JUNIOR" | "MID" | "SENIOR" | "LEAD" | "STAFF" | "MANAGER" | "DIRECTOR",
+  "primaryStack": ["skill1", "skill2", ...],
+  "domains": ["fintech", "healthtech", ...],
+  "workModes": ["REMOTE", "HYBRID", "ONSITE"],
+  "redFlags": [],
+  "greenFlags": [],
+  "suggestedIndustries": ["TECH", "FINANCE", ...],
+  "confidence": 0.0-1.0
 }
 
-// ── Cover letter generation ────────────────────────────────────────
+Rules:
+- primaryStack: 5-10 most relevant skills (technologies, tools, methodologies)
+- domains: industry verticals the candidate has experience in
+- suggestedIndustries: from TECH, HEALTHCARE, FINANCE, EDUCATION, CREATIVE, SALES, LEGAL, OPERATIONS
+- confidence: how sure you are about seniority + stack (0.5 = guessing, 0.9 = obvious)
+- If you can't tell, leave arrays empty and set confidence low`
 
-export async function generateCoverLetter(
-  job: { title: string; company: string; description: string },
-  profile: { seniority: string; primaryStack: string[]; domains: string[] },
-  tone: 'FORMAL' | 'CONVERSATIONAL' | 'CONFIDENT' = 'FORMAL'
-): Promise<string> {
-  const model = getClient().getGenerativeModel({
-    model: TEXT_MODEL,
-    generationConfig: { temperature: 0.7 },
-  })
+  const res = await fetch(
+    `${BASE}/models/gemini-1.5-flash:generateContent?key=${apiKey()}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: {
+          temperature: 0.2,
+          responseMimeType: 'application/json',
+          maxOutputTokens: 1500,
+        },
+      }),
+    }
+  )
 
-  const toneInstructions = {
-    FORMAL: 'Use traditional business letter formality. Suitable for finance, legal, healthcare, or enterprise roles.',
-    CONVERSATIONAL: 'Use a warm, professional but approachable tone. Suitable for startups and modern companies.',
-    CONFIDENT: 'Use a direct, achievement-focused tone. Suitable for senior engineering or leadership roles.',
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(`Gemini parseResume failed: ${res.status} ${JSON.stringify(err).slice(0, 200)}`)
   }
 
-  const prompt = `Write a cover letter for the following job application.
-
-JOB:
-Title: ${job.title}
-Company: ${job.company}
-Description: ${job.description.slice(0, 1500)}
-
-CANDIDATE:
-Seniority: ${profile.seniority}
-Stack/skills: ${profile.primaryStack.join(', ')}
-Domains: ${profile.domains.join(', ')}
-
-TONE: ${toneInstructions[tone]}
-
-Requirements:
-- 250-350 words, 4 paragraphs
-- Open with a specific reason for interest in this company/role (not "I am writing to apply")
-- Body paragraphs must reference concrete experience that matches the job requirements
-- Close with a forward-looking sentence, not a generic "thank you"
-- Do not invent specific metrics or company names not in the candidate profile
-- Use [Your Name] as the sign-off placeholder
-- No headers, no date, no address block — just the letter body`
-
-  const result = await model.generateContent(prompt)
-  return result.response.text().trim()
+  const data = await res.json()
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? '{}'
+  return JSON.parse(text)
 }

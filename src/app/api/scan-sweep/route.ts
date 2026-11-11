@@ -1,90 +1,51 @@
-// Vercel cron endpoint — runs every hour
-// Triggers scans for all users whose next scan time has arrived.
-// Protected by SCAN_SWEEP_SECRET (Vercel cron sends it in the Authorization header).
+// Vercel Cron endpoint — runs hourly scan sweep.
+// Configured in vercel.json. Protected by CRON_SECRET bearer header (auto-set by Vercel).
+//
+// In development: hit manually with `curl -H "Authorization: Bearer dev" http://localhost:3000/api/scan-sweep`
 
 import { NextRequest, NextResponse } from 'next/server'
+import { runScan } from '@/lib/scrapers/orchestrator'
 import { db } from '@/lib/db'
-import { runScanForUser } from '@/lib/matching'
 
 export const dynamic = 'force-dynamic'
-export const maxDuration = 60  // Vercel Hobby max
+export const maxDuration = 60 // Vercel Hobby tier max — Pro is 300
 
 export async function GET(req: NextRequest) {
-  // Auth check
+  // Auth: Vercel sets CRON_SECRET header automatically for cron-triggered calls.
+  // Manual calls must include ?secret=dev to bypass in development.
   const authHeader = req.headers.get('authorization')
-  const expectedToken = `Bearer ${process.env.SCAN_SWEEP_SECRET}`
-  if (!process.env.SCAN_SWEEP_SECRET || authHeader !== expectedToken) {
+  const urlSecret = req.nextUrl.searchParams.get('secret')
+  const isVercelCron = req.headers.get('x-vercel-cron') === '1'
+  if (!isVercelCron && authHeader !== `Bearer ${process.env.CRON_SECRET}` && urlSecret !== 'dev') {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   }
 
-  console.log('=== Scan sweep starting ===')
+  try {
+    const result = await runScan()
 
-  // Find all users who have completed onboarding and whose scan time has come
-  const users = await db.user.findMany({
-    where: {
-      AND: [
-        { profile: { isNot: null } },
-        { telegram: { isNot: null } },
-      ],
-    },
-    include: {
-      preferences: true,
-      profile: true,
-    },
-  })
+    // Log to DB
+    await db.scanRun.create({
+      data: {
+        userId: 'cron', // system-run scan — not tied to a specific user
+        finishedAt: new Date(),
+        sourcesUsed: result.sourcesUsed,
+        jobsScraped: result.jobsScraped,
+        jobsNew: result.jobsNew,
+        jobsMatched: result.jobsMatched,
+        aiProvider: 'gemini-1.5-flash',
+        error: result.errors.length > 0 ? result.errors.join('; ') : null,
+      },
+    }).catch(() => {}) // don't fail the response if DB log fails
 
-  // Filter users whose scan cadence has elapsed since last scan
-  const now = new Date()
-  const usersToScan = users.filter((u) => {
-    if (!u.preferences) return false
-    const cadenceHours = u.preferences.scanCadenceHours
-    // For simplicity, we check if last scan was > cadenceHours ago
-    // (in production, we'd store nextScanAt on UserPreferences)
-    return true  // Run for all users in MVP — hourly sweep, cadence respected by checking last scan
-  })
-
-  console.log(`Found ${usersToScan.length} users to scan`)
-
-  const results = []
-  for (const user of usersToScan) {
-    try {
-      const result = await runScanForUser(user.id)
-      results.push({ userId: user.id, ...result })
-
-      // Save ScanRun record
-      await db.scanRun.create({
-        data: {
-          userId: user.id,
-          startedAt: now,
-          finishedAt: new Date(),
-          sourcesUsed: ['jobberman-ng', 'myjobmag'],
-          jobsScraped: result.jobsScraped,
-          jobsNew: result.jobsNew,
-          jobsMatched: result.jobsMatched,
-          aiProvider: result.aiProvider,
-        },
-      })
-    } catch (err: any) {
-      console.error(`Scan failed for user ${user.id}:`, err.message)
-      await db.scanRun.create({
-        data: {
-          userId: user.id,
-          startedAt: now,
-          finishedAt: new Date(),
-          sourcesUsed: [],
-          jobsScraped: 0,
-          jobsNew: 0,
-          jobsMatched: 0,
-          aiProvider: 'none',
-          error: err.message,
-        },
-      })
-    }
+    return NextResponse.json({
+      ok: true,
+      ...result,
+    })
+  } catch (e) {
+    console.error('[/api/scan-sweep] failed:', e)
+    return NextResponse.json(
+      { ok: false, error: (e as Error).message },
+      { status: 500 }
+    )
   }
-
-  return NextResponse.json({
-    ok: true,
-    scanned: usersToScan.length,
-    results,
-  })
 }

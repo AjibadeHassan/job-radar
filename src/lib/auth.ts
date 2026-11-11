@@ -1,16 +1,14 @@
-// GigForMe — Auth.js (NextAuth v4) config with Google provider + Prisma adapter
-// Multi-tenant: every user gets their own Profile, Resume, TelegramLink, etc.
-
-import type { NextAuthOptions } from 'next-auth'
+// Auth.js / NextAuth v4 config — Google OAuth with Prisma adapter
+// Reuses the User/Account/Session models from our Prisma schema.
+import NextAuth, { type NextAuthOptions } from 'next-auth'
 import GoogleProvider from 'next-auth/providers/google'
 import { PrismaAdapter } from '@auth/prisma-adapter'
 import { db } from './db'
-import type { Role } from '@prisma/client'
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(db),
   session: {
-    strategy: 'jwt',  // JWT for serverless compatibility (no DB session lookups)
+    strategy: 'database', // Use the Session table — needed for serverless
   },
   providers: [
     GoogleProvider({
@@ -18,7 +16,7 @@ export const authOptions: NextAuthOptions = {
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
       authorization: {
         params: {
-          prompt: 'select_account',
+          prompt: 'consent',
           access_type: 'offline',
           response_type: 'code',
         },
@@ -26,52 +24,37 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
-      // First sign-in: persist user.id and role to the token
-      if (user) {
-        token.uid = user.id
-        const dbUser = await db.user.findUnique({
-          where: { id: user.id },
-          select: { role: true },
-        })
-        token.role = (dbUser?.role as Role) ?? 'USER'
-      }
-      return token
-    },
-    async session({ session, token }) {
-      // Expose user.id and role on session.user
+    async session({ session, user }) {
+      // Attach the user id to the session so API routes can read it
       if (session.user) {
-        ;(session.user as any).id = token.uid
-        ;(session.user as any).role = token.role
+        session.user.id = user.id
       }
       return session
     },
-    async signIn({ user, account, profile }) {
-      // Gate: only allow sign-in if GOOGLE_CLIENT_ID is set
-      if (!process.env.GOOGLE_CLIENT_ID) {
-        return false
+    async signIn({ user, account }) {
+      // On first sign-in, the PrismaAdapter creates a User record.
+      // We also create a default UserPreferences row here so the
+      // onboarding wizard has something to update.
+      if (account?.provider === 'google' && user.id) {
+        const existing = await db.userPreferences.findUnique({
+          where: { userId: user.id },
+        })
+        if (!existing) {
+          await db.userPreferences.create({
+            data: { userId: user.id },
+          })
+        }
       }
       return true
     },
   },
   pages: {
-    signIn: '/',
-    error: '/?auth_error=1',
+    // No custom sign-in page — we use a button in the navbar that
+    // redirects to /api/auth/signin. After sign-in, redirect to /onboarding
+    // if profile is incomplete, else /dashboard.
+    signIn: '/auth/signin',
   },
+  secret: process.env.AUTH_SECRET,
 }
 
-// Helper to fetch the current session on the server
-import { getServerSession } from 'next-auth'
-export async function getSession() {
-  return getServerSession(authOptions)
-}
-
-// Helper to require auth on API routes — returns userId or 401
-export async function requireAuth(): Promise<{ userId: string; email: string } | null> {
-  const session = await getSession()
-  if (!session?.user) return null
-  return {
-    userId: (session.user as any).id as string,
-    email: session.user.email!,
-  }
-}
+export default NextAuth(authOptions)

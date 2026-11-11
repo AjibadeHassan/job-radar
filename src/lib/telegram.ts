@@ -1,144 +1,203 @@
-// GigForMe — Telegram bot client + helpers
-// Reuses the bot token from the job-scanner repo. Single bot, per-user dispatch by chatId.
+// Telegram Bot API client.
+// REUSES the bot token from the job-scanner repo — existing users keep working.
+// Bot username: Carefree17scan_bot (display name: Jobfinder)
+//
+// In production (Vercel), the bot uses long-polling via a cron-triggered sweep
+// OR a webhook set via /api/telegram/set-webhook (preferred once we have a domain).
 
-import TelegramBot from 'node-telegram-bot-api'
+const BASE = 'https://api.telegram.org/bot'
 
-let botInstance: TelegramBot | null = null
+function token(): string {
+  const t = process.env.TELEGRAM_BOT_TOKEN
+  if (!t) throw new Error('TELEGRAM_BOT_TOKEN not set')
+  return t
+}
 
-export function getBot(): TelegramBot {
-  const token = process.env.TELEGRAM_BOT_TOKEN
-  if (!token) throw new Error('TELEGRAM_BOT_TOKEN not set')
+export interface TelegramMessage {
+  chatId: string
+  text: string
+  inlineKeyboard?: Array<Array<{ text: string; url?: string; callback_data?: string }>>
+  parseMode?: 'Markdown' | 'HTML'
+}
 
-  if (!botInstance) {
-    // Initialize without polling — we'll use sendMessage only from serverless
-    // (polling requires a persistent process which Vercel can't do)
-    botInstance = new TelegramBot(token, { polling: false })
+/**
+ * Send a message to a user's Telegram chat.
+ * Returns true on success, false on failure (rate limit, blocked chat, etc.).
+ */
+export async function sendMessage(msg: TelegramMessage): Promise<boolean> {
+  const body: Record<string, unknown> = {
+    chat_id: msg.chatId,
+    text: msg.text,
+    parse_mode: msg.parseMode ?? 'HTML',
+    disable_web_page_preview: true,
   }
-  return botInstance
-}
-
-export interface JobNotification {
-  jobTitle: string
-  companyName: string
-  location: string
-  workMode?: string
-  matchScore: number
-  matchReason: string
-  redFlags: string[]
-  salaryRange?: string
-  postedAt: string
-  jobId: string
-  applyUrl?: string
-}
-
-export async function sendJobNotification(chatId: string, job: JobNotification): Promise<boolean> {
-  const bot = getBot()
-
-  const redFlagsText =
-    job.redFlags.length > 0
-      ? '\n\n⚠️ Red flags:\n' + job.redFlags.map((f) => `• ${f}`).join('\n')
-      : ''
-
-  const salaryText = job.salaryRange ? `\n💰 ${job.salaryRange}` : ''
-
-  const message =
-    `🎯 New match (${job.matchScore}/100) — ${job.jobTitle}\n\n` +
-    `🏢 ${job.companyName}\n` +
-    `📍 ${job.location}${job.workMode ? ` · ${job.workMode}` : ''}` +
-    salaryText +
-    `\n📅 Posted ${timeAgo(job.postedAt)}\n\n` +
-    `💡 ${job.matchReason}` +
-    redFlagsText +
-    `\n\n👉 /view_${job.jobId} — View details\n` +
-    `👉 /apply_${job.jobId} — Apply\n` +
-    `👉 /cover_${job.jobId} — Generate cover letter`
+  if (msg.inlineKeyboard) {
+    body.reply_markup = {
+      inline_keyboard: msg.inlineKeyboard,
+    }
+  }
 
   try {
-    await bot.sendMessage(chatId, message, {
-      parse_mode: 'HTML',
-      disable_web_page_preview: true,
+    const res = await fetch(`${BASE}${token()}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
     })
+    const data = await res.json()
+    if (!data.ok) {
+      console.error('[telegram] sendMessage failed:', data.description)
+      return false
+    }
     return true
-  } catch (err: any) {
-    console.error('Telegram send failed:', err.message)
+  } catch (e) {
+    console.error('[telegram] sendMessage error:', e)
     return false
   }
 }
 
-// Generate a deep-link token for onboarding
-// Format: t.me/GigForMeBot?start=TOKEN
-export function generateDeepLinkToken(): string {
-  return Math.random().toString(36).substring(2, 12) + Date.now().toString(36)
+/**
+ * Format a job match as a Telegram message.
+ * Returns both the text and the inline keyboard for action buttons.
+ */
+export function formatJobMessage(job: {
+  matchScore: number
+  title: string
+  company: string
+  location: string
+  workMode?: string
+  matchReason: string
+  redFlags?: string[]
+  salaryRange?: string
+  url: string
+  applyUrl?: string
+}, appUrl: string): TelegramMessage {
+  const scoreEmoji = job.matchScore >= 80 ? '🎯' : job.matchScore >= 60 ? '💼' : '🔍'
+  const lines: string[] = [
+    `<b>${scoreEmoji} New match (${job.matchScore}/100) — ${escapeHtml(job.title)}</b>`,
+    ``,
+    `🏢 <b>${escapeHtml(job.company)}</b>  •  ${escapeHtml(job.location)}${job.workMode ? ` • ${job.workMode}` : ''}`,
+  ]
+  if (job.salaryRange) {
+    lines.push(`💰 <b>${escapeHtml(job.salaryRange)}</b>`)
+  }
+  lines.push(`📅 Posted ${new Date().toLocaleDateString()}`)
+  lines.push('')
+  lines.push(`💡 ${escapeHtml(job.matchReason)}`)
+  if (job.redFlags && job.redFlags.length > 0) {
+    lines.push('')
+    lines.push(`⚠️ Red flags: ${job.redFlags.map(escapeHtml).join(' • ')}`)
+  }
+
+  const text = lines.join('\n')
+
+  const inlineKeyboard = [
+    [
+      { text: 'View Job', url: job.url },
+      ...(job.applyUrl ? [{ text: 'Apply', url: job.applyUrl }] : []),
+    ],
+    [
+      { text: 'Cover Letter', url: `${appUrl}/dashboard?job=${encodeURIComponent(job.url)}&action=cover-letter` },
+      { text: 'Mute Source', callback_data: `mute:${job.url}` },
+    ],
+  ]
+
+  return { chatId: '', text, inlineKeyboard, parseMode: 'HTML' }
 }
 
-export function buildDeepLink(token: string): string {
-  const username = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || 'GigForMeBot'
-  return `https://t.me/${username}?start=${token}`
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
 }
 
-// Handle /start {token} — stores chatId against userId
-// This runs as part of the getUpdates webhook (polled by Vercel cron)
-export async function handleStartCommand(
-  chatId: string,
-  args: string
-): Promise<{ userId: string } | null> {
-  if (!args) return null  // No token — user just typed /start
-
-  // Token format: TOKEN from generateDeepLinkToken()
-  // Look up the TelegramLink record by deepLinkToken
-  const { db } = await import('./db')
-  const link = await db.telegramLink.findUnique({
-    where: { deepLinkToken: args },
-  })
-  if (!link) return null  // Invalid or already-used token
-
-  // Save chatId and mark verified
-  await db.telegramLink.update({
-    where: { userId: link.userId },
-    data: {
-      chatId,
-      verifiedAt: new Date(),
-    },
-  })
-
-  return { userId: link.userId }
+/**
+ * Generate a Telegram deep-link URL for onboarding.
+ * User scans QR → opens Telegram → taps Start → bot receives /start TOKEN
+ * → our webhook matches TOKEN to a TelegramLink record → stores chatId.
+ */
+export function deepLinkUrl(deepLinkToken: string, botUsername?: string): string {
+  const username = botUsername ?? process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME ?? 'GigForMeBot'
+  return `https://t.me/${username}?start=${deepLinkToken}`
 }
 
-function timeAgo(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime()
-  const h = Math.floor(diff / (1000 * 60 * 60))
-  if (h < 1) return 'just now'
-  if (h < 24) return `${h}h ago`
-  return `${Math.floor(h / 24)}d ago`
-}
+/**
+ * Process an incoming Telegram update (either /start command or callback query).
+ * Called from /api/telegram/webhook.
+ */
+export async function processUpdate(update: TelegramUpdate): Promise<{ ok: boolean; response?: string }> {
+  // Handle /start command (deep-link capture during onboarding)
+  if (update.message?.text?.startsWith('/start ')) {
+    const token = update.message.text.slice('/start '.length).trim()
+    const chatId = String(update.message.chat.id)
 
-// Polling function — used by Vercel cron to process /start commands
-// Returns the count of messages processed
-export async function pollBotUpdates(): Promise<number> {
-  const bot = getBot()
-  // Use getUpdates manually — we don't want to enable polling on a serverless function
-  try {
-    const updates = await bot.getUpdates({ timeout: 0, limit: 50 })
-    let processed = 0
-    for (const update of updates) {
-      const msg = update.message
-      if (!msg?.text) continue
-      const parts = msg.text.split(' ')
-      if (parts[0] === '/start' && parts[1]) {
-        const result = await handleStartCommand(String(msg.chat.id), parts[1])
-        if (result) {
-          await bot.sendMessage(
-            msg.chat.id,
-            '✅ Connected to GigForMe!\n\nYou\'ll now receive job matches here. ' +
-              'Tap "Finish setup" on the website to complete your profile.'
-          )
-          processed++
-        }
-      }
+    // Look up the TelegramLink by deepLinkToken — if found, store chatId + mark verified
+    const { db } = await import('@/lib/db')
+    const link = await db.telegramLink.findUnique({
+      where: { deepLinkToken: token },
+    })
+
+    if (!link) {
+      await sendMessage({
+        chatId,
+        text: '❌ Invalid onboarding token. Please restart the Telegram connection step from the GigForMe app.',
+      })
+      return { ok: false, response: 'invalid_token' }
     }
-    return processed
-  } catch (err) {
-    console.error('pollBotUpdates error:', err)
-    return 0
+
+    // Update the link with the verified chatId
+    await db.telegramLink.update({
+      where: { deepLinkToken: token },
+      data: {
+        chatId,
+        verifiedAt: new Date(),
+      },
+    })
+
+    await sendMessage({
+      chatId,
+      text: '✅ <b>Telegram connected to GigForMe!</b>\n\nYou\'ll receive job match alerts here. You can adjust notification preferences anytime from the GigForMe dashboard.',
+      parseMode: 'HTML',
+    })
+
+    return { ok: true, response: 'verified' }
+  }
+
+  // Handle /start with no token (someone just opened the bot)
+  if (update.message?.text === '/start') {
+    const chatId = String(update.message.chat.id)
+    await sendMessage({
+      chatId,
+      text: '👋 <b>Welcome to GigForMe</b>\n\nTo start receiving job matches, sign up at GigForMe and connect your Telegram from the onboarding wizard.',
+      parseMode: 'HTML',
+    })
+    return { ok: true, response: 'welcome' }
+  }
+
+  // Handle callback queries (button taps)
+  if (update.callback_query) {
+    const data = update.callback_query.data
+    const chatId = String(update.callback_query.message?.chat?.id ?? '')
+    if (data.startsWith('mute:')) {
+      await sendMessage({
+        chatId,
+        text: '🔇 Source muted for 24 hours. You can unmute from the GigForMe dashboard.',
+      })
+      return { ok: true, response: 'muted' }
+    }
+  }
+
+  return { ok: true, response: 'ignored' }
+}
+
+export interface TelegramUpdate {
+  update_id: number
+  message?: {
+    chat: { id: number }
+    text?: string
+  }
+  callback_query?: {
+    data: string
+    message?: { chat?: { id?: number } }
   }
 }
